@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <!-- 
+       VIEWPORT:
+       user-scalable=no, maximum-scale=1.0 — критически важно для ощущения "Native App"
+       на мобильных устройствах, чтобы убрать зум по двойному тапу.
+    -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>EcoFreelance App</title>
+
+    <!-- PRECONNECT: Ускоряем установку соединения с внешними ресурсами -->
+    <link rel="preconnect" href="https://telegram.org">
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+
+    <!-- Telegram WebApp SDK -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+    <!-- Иконки (FontAwesome) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- CSS: Разделение на базовые стили и десктопную обертку -->
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/desktop.css">
+</head>
+<body>
+
+    <!-- 
+       #app-wrapper: 
+       Ограничивает ширину приложения на ПК (см. desktop.css), 
+       симулируя мобильный экран.
+    -->
+    <div id="app-wrapper">
+
+        <!-- 
+           #main-content: 
+           Область скролла. Высота рассчитывается так, чтобы не перекрывать bottom-nav.
+        -->
+        <main id="main-content">
+
+            <!-- ==============================
+                 ЭКРАН 1: ПРОФИЛЬ (ГЛАВНАЯ)
+                 Рендеринг: js/views.js -> renderProfileView()
+                 Данные: js/data.js -> engineerProfile
+            =============================== -->
+            <section id="view-profile" class="view active">
+                <header class="profile-header">
+                    <div class="profile-card">
+                        <!-- onerror важен, если локальная картинка не прогрузится -->
+                        <img src="images/avatar.jpg" alt="Avatar" class="avatar" onerror="this.src='https://via.placeholder.com/100'">
+                        <div class="profile-info">
+                            <h1 id="profile-name">Загрузка...</h1>
+                            <p class="role">Инженер-эколог / Разработчик</p>
+                            <!-- Теги (заполняются через JS) -->
+                            <div class="tags"></div>
+                        </div>
+                    </div>
+                </header>
+
+                <!-- Статус загрузки (Workload) -->
+                <div class="status-section">
+                    <h3>Моя загрузка</h3>
+                    <div class="workload-container">
+                        <!-- JS меняет width и color -->
+                        <div class="workload-bar">
+                            <div class="workload-fill" id="workload-fill" style="width: 0%;"></div>
+                        </div>
+                        <p id="workload-text" class="status-text">Загрузка данных...</p>
+                    </div>
+                </div>
+
+                <!-- География (Анимация пузырей) -->
+                <div class="geo-section">
+                    <div class="geo-header">
+                        <h3>География работ</h3>
+                    </div>
+                    <!-- Контейнер для пузырей (js/views.js) -->
+                    <div id="bubbles-cloud" class="bubbles-container"></div>
+                </div>
+                
+                <!-- Меню действий -->
+                <div class="action-buttons">
+                    <!-- Прямой вызов window.open допустим для простых ссылок -->
+                    <button class="btn btn-primary" onclick="window.open('https://t.me/EcoSubcontract')">
+                        <i class="fa-brands fa-telegram"></i> Написать мне
+                    </button>
+                    <button class="btn btn-outline">
+                        <i class="fa-solid fa-file-pdf"></i> Скачать Резюме
+                    </button>
+                    
+                    <div class="menu-list">
+                        <!-- Реквизиты: логика клика вешается в js/views.js (renderProfileView) -->
+                        <div class="menu-item" id="btn-requisites">
+                            <div class="menu-icon-box" style="background: rgba(36, 129, 204, 0.1); color: #2481cc;">
+                                <i class="fa-solid fa-file-contract"></i>
+                            </div>
+                            <div class="menu-text">
+                                <span>Реквизиты и Договор</span>
+                                <small>Скачать шаблоны</small>
+                            </div>
+                            <i class="fa-solid fa-chevron-right arrow-icon"></i>
+                        </div>
+                        
+                        <!-- Сертификаты: простая заглушка -->
+                        <div class="menu-item" onclick="alert('Тут будут сканы сертификатов')">
+                            <div class="menu-icon-box" style="background: rgba(46, 204, 113, 0.1); color: #2ecc71;">
+                                <i class="fa-solid fa-certificate"></i>
+                            </div>
+                            <div class="menu-text">
+                                <span>Сертификаты</span>
+                                <small>Лицензии и допуски</small>
+                            </div>
+                            <i class="fa-solid fa-chevron-right arrow-icon"></i>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ==============================
+                 ЭКРАН 2: ПРОЕКТЫ
+                 Рендеринг: js/views.js -> renderProjectsView()
+                 Логика: Фильтрация в js/logic.js
+            =============================== -->
+            <section id="view-projects" class="view">
+                <div class="section-header">
+                    <h2>Проекты</h2>
+                    <!-- Класс admin-only скрывает блок через CSS, если пользователь не админ -->
+                    <div class="filters admin-only hidden">
+                        <span class="filter-chip active">Все</span>
+                        <span class="filter-chip">Должники</span>
+                        <span class="filter-chip">В работе</span>
+                    </div>
+                </div>
+                
+                <!-- Контейнер списка проектов -->
+                <div id="projects-list" class="projects-container">
+                    <div class="empty-state">
+                        <i class="fa-solid fa-folder-open"></i>
+                        <p>Загрузка проектов...</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ==============================
+                 ЭКРАН 3: УСЛУГИ И КАЛЬКУЛЯТОР
+                 Логика: js/logic.js -> setupCalculatorLogic()
+            =============================== -->
+            <section id="view-services" class="view">
+
+                <!-- Табы внутри экрана (Быстрый / Смета) -->
+                <!-- Функции switchCalcMode глобально доступны из logic.js -->
+                <div class="calc-mode-switch">
+                    <button class="mode-btn active" onclick="switchCalcMode('simple')">Быстрый</button>
+                    <button class="mode-btn" onclick="switchCalcMode('advanced')">Смета (КП)</button>
+                </div>
+
+                <!-- РЕЖИМ 1: БЫСТРЫЙ -->
+                <div id="calc-simple-mode">
+                    <div class="calculator-card">
+                        <div class="form-group">
+                            <label>Что проектируем?</label>
+                            <!-- Опции заполняются из js/data.js -->
+                            <select id="calc-service-type"></select>
+                        </div>
+
+                        <!-- Динамические инпуты (range, checkbox) -->
+                        <div id="dynamic-calc-inputs"></div>
+
+                        <!-- Загрузка файлов -->
+                        <div class="form-group">
+                            <label>Документы (ТЗ, Справки, Карты)</label>
+                            <div class="file-upload-area" id="file-drop-zone">
+                                <input type="file" id="calc-file-input" multiple hidden>
+                                <i class="fa-solid fa-cloud-arrow-up"></i>
+                                <span id="file-upload-text">Прикрепить файлы</span>
+                                <small>PDF, DOCX, ZIP до 20 Мб</small>
+                            </div>
+                            <div id="file-list-display" class="file-list"></div>
+                        </div>
+
+                        <!-- Результат -->
+                        <div class="calc-result">
+                            <div class="price-box">
+                                <span>Ориентир:</span>
+                                <h3 id="calc-total-price">0 ₽</h3>
+                            </div>
+                            <div class="time-box">
+                                <span>Срок:</span>
+                                <strong id="calc-total-time">0 дней</strong>
+                            </div>
+                        </div>
+                        
+                        <button class="btn btn-primary full-width" id="btn-order-calc">
+                            Обсудить расчет
+                        </button>
+                    </div>
+
+                    <!-- Текстовый список (для SEO и информации) -->
+                    <div class="services-list">
+                        <h3>Список услуг</h3>
+                        <div id="services-container"></div>
+                    </div>
+                </div>
+
+                <!-- РЕЖИМ 2: СМЕТА / КП -->
+                <div id="calc-advanced-mode" class="hidden">
+                    <div id="estimate-container">
+                        <!-- Карточки объектов генерируются тут -->
+                    </div>
+
+                    <button class="btn btn-outline full-width dashed-btn" onclick="addNewObjectToEstimate()">
+                        <i class="fa-solid fa-plus"></i> Добавить объект / Площадку
+                    </button>
+
+                    <div class="estimate-footer">
+                        <div class="total-row">
+                            <span>Итого по смете:</span>
+                            <strong id="estimate-total-sum">0 ₽</strong>
+                        </div>
+                        <button class="btn btn-primary full-width" onclick="sendEstimateToTelegram()">
+                            📄 Получить КП в Telegram
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ==============================
+                 ЭКРАН 4: ПАРТНЕРЫ (АДМИНКА)
+                 Виден только если logic.js определил isAdmin = true
+            =============================== -->
+            <section id="view-partners" class="view admin-only hidden">
+                <div class="section-header">
+                    <h2>Партнеры (CRM)</h2>
+                </div>
+                
+                <div class="finance-dashboard">
+                    <div class="fin-card red">
+                        <span>Дебиторка</span>
+                        <strong id="fin-debt">0 ₽</strong>
+                    </div>
+                    <div class="fin-card green">
+                        <span>Ожидаю</span>
+                        <strong id="fin-wait">0 ₽</strong>
+                    </div>
+                </div>
+
+                <div id="partners-list" class="partners-list"></div>
+            </section>
+
+			<!-- ==============================
+                 ЭКРАН 5: ПРОФИЛЬ КЛИЕНТА (ВВОД РЕКВИЗИТОВ)
+                 Логика: js/logic.js -> savePartnerProfile()
+            =============================== -->
+			<section id="view-partner" class="view">
+                <!-- Inline стиль исправляет отступы, специфичные для форм -->
+				<div class="modal-content partner-form-content" style="box-shadow: none; padding-top: 40px;">
+					<div class="partner-header">
+						<i class="fa-solid fa-handshake"></i>
+						<h2>Давайте познакомимся!</h2>
+						<p>Заполните реквизиты, чтобы я мог автоматически формировать для вас Договоры и КП.</p>
+					</div>
+
+                    <form id="partner-form" onsubmit="event.preventDefault(); savePartnerProfile();">
+                        <div class="form-group">
+                            <label>Название организации / ИП</label>
+                            <input type="text" id="p-name" placeholder="ООО 'Ромашка'" required>
+                        </div>
+                
+                        <div class="form-group">
+                            <label>ИНН</label>
+                            <!-- type="tel" открывает цифровую клавиатуру на мобилках -->
+                            <input type="tel" id="p-inn" placeholder="Введите ИНН" maxlength="12">
+                        </div>
+
+                        <div class="form-group">
+                            <label>Контактное лицо (Имя)</label>
+                            <input type="text" id="p-contact" placeholder="Иван Иванович">
+                        </div>
+
+                        <div class="form-group">
+                            <label>Email для документов</label>
+                            <input type="email" id="p-email" placeholder="buh@example.com">
+                        </div>
+
+                        <button type="submit" class="btn btn-primary full-width">
+                            Сохранить и Войти
+                        </button>
+                    </form>
+				</div>
+			</section>
+
+        </main> <!-- Конец #main-content -->
+
+        <!-- ==============================
+             МОДАЛЬНОЕ ОКНО (ДЕТАЛИ ПРОЕКТА)
+             Вынесено из Main, чтобы перекрывать весь интерфейс
+        =============================== -->
+        <div id="project-detail-modal" class="modal hidden">
+            <div class="modal-content">
+                <span class="close-modal">&times;</span>
+                <div id="modal-body">
+                    <!-- Заполняется в js/views.js -> fillAndShowModal() -->
+                </div>
+            </div>
+        </div>
+
+        <!-- ==============================
+             НИЖНЯЯ НАВИГАЦИЯ (TAB BAR)
+             Логика: js/logic.js -> setupNavigation()
+        =============================== -->
+        <nav class="bottom-nav">
+            <div class="nav-item active" data-target="view-profile">
+                <i class="fa-solid fa-user"></i>
+                <span>Эколог</span>
+            </div>
+            <div class="nav-item" data-target="view-projects">
+                <i class="fa-solid fa-briefcase"></i>
+                <span>Проекты</span>
+            </div>
+            <div class="nav-item" data-target="view-services">
+                <i class="fa-solid fa-calculator"></i>
+                <span>Расчет</span>
+            </div>
+			<div class="nav-item" data-target="view-partner">
+				<i class="fa-solid fa-building"></i>
+				<span>Мой профиль</span>
+			</div>
+            <!-- Скрытая вкладка Админа -->
+            <div class="nav-item admin-only hidden" id="nav-partners" data-target="view-partners">
+                <i class="fa-solid fa-gem"></i>
+                <span>CRM</span>
+            </div>
+        </nav>
+
+    </div> <!-- Конец #app-wrapper -->
+
+    <!-- 
+       СКРИПТЫ
+       Используем 'defer', чтобы скрипты грузились параллельно и 
+       запускались только после полной загрузки HTML.
+    -->
+    <script src="js/data.js" defer></script>
+    <script src="js/views.js" defer></script>
+    <script src="js/logic.js" defer></script>
+
+    <!-- 
+       Внимание: Временный скрипт удален, так как 
+       initApp() и setupNavigation() уже есть в js/logic.js.
+       Это предотвращает двойное срабатывание событий.
+    -->
+
+</body>
+</html>

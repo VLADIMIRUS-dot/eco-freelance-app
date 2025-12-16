@@ -1,0 +1,47 @@
+/* css/desktop.css */
+
+/* Правила применяются ТОЛЬКО если ширина экрана больше 768px (Планшеты/ПК) */
+@media (min-width: 768px) {
+    
+    body {
+        /* Делаем темный фон вокруг приложения на ПК */
+        background-color: #212121; 
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+    }
+
+    /* Контейнер-обертка приложения */
+    #app-wrapper {
+        width: 100%;
+        max-width: 420px; /* Ширина мобилки */
+        height: 90vh; /* Почти на всю высоту */
+        background-color: var(--tg-theme-bg-color);
+        border-radius: 20px;
+        box-shadow: 0 0 50px rgba(0,0,0,0.5);
+        position: relative;
+        overflow: hidden; /* Чтобы контент не вылезал за скругления */
+        border: 1px solid #333;
+    }
+
+    #main-content {
+        height: 100%;
+        overflow-y: auto; /* Скроллится только контент внутри телефона */
+        /* Кастомный скроллбар */
+        scrollbar-width: thin; 
+    }
+
+    /* Навигация теперь прилипает к низу КОНТЕЙНЕРА, а не экрана */
+    .bottom-nav {
+        position: absolute; 
+        width: 100%;
+        border-radius: 0 0 20px 20px;
+    }
+
+    /* Модальное окно не на весь экран, а внутри контейнера */
+    .modal {
+        position: absolute;
+        border-radius: 20px;
+    }
+}

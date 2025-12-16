@@ -1,0 +1,14 @@
+/EcoFreelanceApp
+│
+├── index.html        # Каркас: Меню (4 кнопки), контейнеры для всех 4 вкладок
+│
+├── css/
+│   ├── style.css     # Базовый стиль (Telegram UI dark/light theme support)
+│   └── desktop.css   # Адаптив под ПК (центрирование, скроллы)
+│
+├── js/
+│   ├── data.js       # Данные: Profile, Services, Projects, Partners(secure)
+│   ├── logic.js      # Логика: Роутинг, Проверка ID, Калькулятор
+│   └── views.js      # Рендеринг: Генерация HTML карточек из данных
+│
+└── images/           # Иконки меню, Аватар, Бейджи статусов
