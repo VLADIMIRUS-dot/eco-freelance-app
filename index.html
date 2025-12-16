@@ -20,9 +20,12 @@
     <!-- Иконки (FontAwesome) -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-    <!-- CSS: Разделение на базовые стили и десктопную обертку -->
-    <link rel="stylesheet" href="css/style.css">
-    <link rel="stylesheet" href="css/desktop.css">
+	<!-- Автоматическая загрузка свежих стилей -->
+    <script>
+        var ver = new Date().getTime(); // Текущее время
+        document.write('<link rel="stylesheet" href="css/style.css?v=' + ver + '">');
+        document.write('<link rel="stylesheet" href="css/desktop.css?v=' + ver + '">');
+    </script>
 </head>
 <body>
 
@@ -413,9 +416,14 @@
        Используем 'defer', чтобы скрипты грузились параллельно и 
        запускались только после полной загрузки HTML.
     -->
-    <script src="js/data.js" defer></script>
-    <script src="js/views.js" defer></script>
-    <script src="js/logic.js" defer></script>
+	<!-- Автоматическая загрузка свежих скриптов -->
+    <script>
+        var ver = new Date().getTime(); // То же самое время
+        // document.write гарантирует порядок загрузки (сначала data, потом views, потом logic)
+        document.write('<script src="js/data.js?v=' + ver + '"><\/script>');
+        document.write('<script src="js/views.js?v=' + ver + '"><\/script>');
+        document.write('<script src="js/logic.js?v=' + ver + '"><\/script>');
+    </script>
 
     <!-- 
        Внимание: Временный скрипт удален, так как 
