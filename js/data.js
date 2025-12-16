@@ -121,17 +121,45 @@ const partnersData = [
     {
         id: 1,
         name: "ООО 'Завод Металл'",
-        contact: "Иван Петрович",
-        rating: 5,
-        notes: "Хороший плательщик",
-        finances: { debt: 0, wait: 15000, ltv: 120000 }
+        inn: "7712345678",
+        contact: "Иван Петрович (ГИП)",
+        email: "gip@zavod.ru",
+        username: "ivan_gip", // Telegram username (без @)
+        
+        // Админские данные
+        rating: 5, // 1-5
+        note: "Платят четко. Любят звонить утром. Договор №45-23.",
+        status: "active", // active, ban
+        
+        // Финансы (для дашборда)
+        finances: { debt: 0, wait: 15000 } 
     },
     {
         id: 2,
-        name: "ИП Неплательщик",
-        contact: "Олег",
+        name: "ИП Неплательщик О.А.",
+        inn: "540000000012",
+        contact: "Менеджер Олег",
+        email: "oleg@mail.ru",
+        username: "", // Нет телеграма
+        
         rating: 1,
-        notes: "Должник",
-        finances: { debt: 25000, wait: 0, ltv: 25000 }
+        note: "Тянут с оплатой. Требуют скидки. Больше не работать без 100% предоплаты!",
+        status: "bad",
+        
+        finances: { debt: 25000, wait: 0 }
+    },
+    {
+        id: 3,
+        name: "АО 'СтройТрест'",
+        inn: "7700009999",
+        contact: "Анна (Секретарь)",
+        email: "info@stroy.com",
+        username: "anna_stroy",
+        
+        rating: 4,
+        note: "Новый клиент. Пока присматриваемся.",
+        status: "new",
+        
+        finances: { debt: 0, wait: 0 }
     }
 ];

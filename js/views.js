@@ -270,26 +270,67 @@ function renderPartnersView(partners) {
         totalDebt += p.finances.debt;
         totalWait += p.finances.wait;
 
-        // Красная полоска, если есть долг
-        const badgeColor = p.finances.debt > 0 ? 'var(--status-red)' : 'var(--status-green)';
+        // Определяем цвет боковой полоски
+        let badgeColor = 'var(--status-green)'; // По умолчанию зеленый
+        if (p.rating <= 2) badgeColor = 'var(--status-red)'; // Плохой рейтинг
+        if (p.finances.debt > 0) badgeColor = 'var(--status-red)'; // Должник
         
+        // Генерация звезд
+        let starsHTML = '';
+        for (let i = 1; i <= 5; i++) {
+            const starClass = i <= p.rating ? 'fa-solid' : 'fa-regular';
+            const colorStyle = i <= p.rating ? 'color: #f1c40f;' : 'color: #ccc;';
+            // onclick вызывает глобальную функцию смены рейтинга
+            starsHTML += `<i class="${starClass} fa-star star-btn" style="${colorStyle}" onclick="updatePartnerRating(${p.id}, ${i})"></i>`;
+        }
+
+        // Кнопка Телеграм
+        const tgButton = p.username 
+            ? `<button class="btn-mini btn-tg" onclick="openPartnerChat('${p.username}')"><i class="fa-brands fa-telegram"></i> Чат</button>`
+            : `<span class="no-tg"><i class="fa-solid fa-ban"></i> Нет TG</span>`;
+
         return `
-            <div class="project-card" style="border-left: 4px solid ${badgeColor};">
-                <div class="card-header">
-                    <span class="card-title">${p.name}</span>
-                    <span style="font-size:0.8rem">⭐ ${p.rating}</span>
+            <div class="partner-card-crm" style="border-left: 5px solid ${badgeColor};">
+                
+                <!-- Верх: Название и Удаление -->
+                <div class="crm-header">
+                    <div class="crm-title">
+                        <h3>${p.name}</h3>
+                        <div class="crm-inn">ИНН: ${p.inn || 'Не указан'}</div>
+                    </div>
+                    <button class="btn-icon-delete" onclick="deletePartner(${p.id})">
+                        <i class="fa-solid fa-trash"></i>
+                    </button>
                 </div>
-                <div style="font-size: 0.85rem; color: #666; margin-bottom: 5px;">
-                    ${p.contact}
+
+                <!-- Контакты -->
+                <div class="crm-contacts">
+                    <div class="crm-row"><i class="fa-solid fa-user"></i> ${p.contact}</div>
+                    <div class="crm-row"><i class="fa-solid fa-envelope"></i> ${p.email || 'Нет email'}</div>
                 </div>
-                <div style="font-size: 0.8rem; background: rgba(241, 196, 15, 0.1); padding: 5px; border-radius: 4px;">
-                    📝 ${p.notes}
+
+                <!-- Управление: Рейтинг и ТГ -->
+                <div class="crm-actions">
+                    <div class="crm-stars">${starsHTML}</div>
+                    ${tgButton}
                 </div>
+
+                <!-- Заметки Админа (Приватные) -->
+                <div class="crm-notes">
+                    <label>Моя заметка (вижу только я):</label>
+                    <textarea 
+                        onchange="updatePartnerNote(${p.id}, this.value)" 
+                        placeholder="Напишите комментарий о клиенте...">${p.note || ''}</textarea>
+                </div>
+
+                <!-- Финансы (если есть долг) -->
+                ${p.finances.debt > 0 ? `<div class="crm-debt-alert">⚠️ Долг: ${p.finances.debt.toLocaleString()} ₽</div>` : ''}
+
             </div>
         `;
     }).join('');
 
-    // Обновляем цифры в дашборде
+    // Обновляем дашборд
     if (debtDisplay) debtDisplay.textContent = totalDebt.toLocaleString() + ' ₽';
     if (waitDisplay) waitDisplay.textContent = totalWait.toLocaleString() + ' ₽';
 }

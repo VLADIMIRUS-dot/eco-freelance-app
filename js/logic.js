@@ -562,3 +562,45 @@ window.sendEstimateToTelegram = function() {
     if(tg.openTelegramLink) tg.openTelegramLink(finalUrl);
     else window.open(finalUrl, '_blank');
 };
+
+// === CRM ФУНКЦИИ (ДЛЯ АДМИНА) ===
+
+// 1. Обновить рейтинг (звезды)
+window.updatePartnerRating = function(id, newRating) {
+    const partner = partnersData.find(p => p.id === id);
+    if (partner) {
+        partner.rating = newRating;
+        // Перерисовываем список, чтобы звезды загорелись
+        renderPartnersView(partnersData);
+        // Вибрация для тактильного отклика
+        if(tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
+    }
+};
+
+// 2. Обновить заметку (сохраняется при потере фокуса)
+window.updatePartnerNote = function(id, text) {
+    const partner = partnersData.find(p => p.id === id);
+    if (partner) {
+        partner.note = text;
+        console.log(`Заметка для ${partner.name} обновлена:`, text);
+        // Тут можно было бы отправить данные на сервер
+    }
+};
+
+// 3. Открыть чат
+window.openPartnerChat = function(username) {
+    const url = `https://t.me/${username}`;
+    if(tg.openTelegramLink) tg.openTelegramLink(url);
+    else window.open(url, '_blank');
+};
+
+// 4. Удалить партнера
+window.deletePartner = function(id) {
+    if(confirm('Удалить этого партнера из базы?')) {
+        const index = partnersData.findIndex(p => p.id === id);
+        if (index !== -1) {
+            partnersData.splice(index, 1);
+            renderPartnersView(partnersData);
+        }
+    }
+};
