@@ -22,9 +22,10 @@
 
 	<!-- Автоматическая загрузка свежих стилей -->
     <script>
-        var ver = new Date().getTime(); // Текущее время
-        document.write('<link rel="stylesheet" href="css/style.css?v=' + ver + '">');
-        document.write('<link rel="stylesheet" href="css/desktop.css?v=' + ver + '">');
+        var APP_VERSION = "1.0"; 
+        
+        document.write('<link rel="stylesheet" href="css/style.css?v=' + APP_VERSION + '">');
+        document.write('<link rel="stylesheet" href="css/desktop.css?v=' + APP_VERSION + '">');
     </script>
 </head>
 <body>
@@ -418,11 +419,9 @@
     -->
 	<!-- Автоматическая загрузка свежих скриптов -->
     <script>
-        var ver = new Date().getTime(); // То же самое время
-        // document.write гарантирует порядок загрузки (сначала data, потом views, потом logic)
-        document.write('<script src="js/data.js?v=' + ver + '"><\/script>');
-        document.write('<script src="js/views.js?v=' + ver + '"><\/script>');
-        document.write('<script src="js/logic.js?v=' + ver + '"><\/script>');
+        document.write('<script src="js/data.js?v=' + APP_VERSION + '" defer><\/script>');
+        document.write('<script src="js/views.js?v=' + APP_VERSION + '" defer><\/script>');
+        document.write('<script src="js/logic.js?v=' + APP_VERSION + '" defer><\/script>');
     </script>
 
     <!-- 
