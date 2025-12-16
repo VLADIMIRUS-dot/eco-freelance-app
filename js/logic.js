@@ -316,19 +316,26 @@ function checkFirstVisit() {
     const dashBlock = document.getElementById('partner-dashboard');
 
     if (!data) {
-        // Данных нет -> Показываем форму регистрации
+        // === СЦЕНАРИЙ 1: НОВЫЙ ПОЛЬЗОВАТЕЛЬ ===
+        // Данных нет -> Готовим форму регистрации
         authBlock?.classList.remove('hidden');
         dashBlock?.classList.add('hidden');
         
-        // Авто-переключение на вкладку профиля при первом входе
+        // Автоматически переключаем на вкладку "Мой профиль", чтобы он зарегистрировался
         setTimeout(() => {
-            document.querySelector('.nav-item[data-target="view-partner"]')?.click();
+            const btn = document.querySelector('.nav-item[data-target="view-partner"]');
+            if(btn) btn.click();
         }, 500);
+
     } else {
-        // Данные есть -> Показываем ЛК
+        // === СЦЕНАРИЙ 2: ПОВТОРНЫЙ ВХОД ===
+        // Данные есть -> Просто готовим ЛК (в фоновом режиме), но никуда не переключаем
         authBlock?.classList.add('hidden');
         dashBlock?.classList.remove('hidden');
         renderPartnerDashboard(JSON.parse(data));
+        
+        // На всякий случай убеждаемся, что активна вкладка "Эколог" (она и так активна по дефолту в HTML, но для надежности)
+        // document.querySelector('.nav-item[data-target="view-profile"]')?.click(); 
     }
 }
 
