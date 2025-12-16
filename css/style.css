@@ -688,7 +688,86 @@ input[type=range] {
     line-height: 1.5;
     padding: 0 10px;
 }
+/* css/style.css - Новые стили для ЛК */
 
+/* Шапка ЛК */
+.lk-header {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    background: var(--tg-theme-bg-color);
+    padding: 20px 0;
+    margin-bottom: 10px;
+}
+
+.lk-avatar {
+    width: 60px; height: 60px;
+    background: var(--tg-theme-secondary-bg-color);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    color: var(--tg-theme-hint-color);
+}
+
+.lk-info { flex: 1; }
+.lk-info h2 { margin: 0; font-size: 1.2rem; line-height: 1.2; }
+.lk-info p { margin: 0; color: var(--tg-theme-hint-color); font-size: 0.9rem; }
+
+.btn-icon-only {
+    background: transparent;
+    border: none;
+    font-size: 1.2rem;
+    color: var(--tg-theme-link-color);
+    cursor: pointer;
+    padding: 10px;
+}
+
+/* Карточка лояльности */
+.loyalty-card {
+    background: linear-gradient(135deg, var(--tg-theme-button-color), #6c5ce7);
+    color: white;
+    padding: 20px;
+    border-radius: 16px;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 15px rgba(36, 129, 204, 0.3);
+}
+
+.loyalty-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 5px;
+}
+
+.loyalty-desc {
+    margin-top: 15px;
+    font-size: 0.8rem;
+    opacity: 0.9;
+    background: rgba(255,255,255,0.2);
+    padding: 8px;
+    border-radius: 8px;
+}
+
+/* Детали */
+.lk-details {
+    margin-top: 20px;
+    background: var(--tg-theme-secondary-bg-color);
+    padding: 15px;
+    border-radius: 12px;
+}
+
+.lk-details h3 { font-size: 1rem; margin-bottom: 10px; color: var(--tg-theme-hint-color); }
+
+.detail-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(0,0,0,0.05);
+    font-size: 0.95rem;
+}
+.detail-row:last-child { border-bottom: none; }
 
 /* ===========================
    9. МОДАЛЬНЫЕ ОКНА
@@ -728,9 +807,6 @@ input[type=range] {
     from { transform: translateY(100%); }
     to { transform: translateY(0); }
 }
-/* css/style.css */
-
-/* ... (предыдущий код) ... */
 
 /* ===========================
    10. КАСТОМНЫЙ СКРОЛЛБАР (Telegram Style)

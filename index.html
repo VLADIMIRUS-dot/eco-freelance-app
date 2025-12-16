@@ -253,13 +253,12 @@
                  Логика: js/logic.js -> savePartnerProfile()
             =============================== -->
 			<section id="view-partner" class="view">
-                <!-- Inline стиль исправляет отступы, специфичные для форм -->
-				<div class="modal-content partner-form-content" style="box-shadow: none; padding-top: 40px;">
-					<div class="partner-header">
-						<i class="fa-solid fa-handshake"></i>
-						<h2>Давайте познакомимся!</h2>
-						<p>Заполните реквизиты, чтобы я мог автоматически формировать для вас Договоры и КП.</p>
-					</div>
+                <div id="partner-auth" class="modal-content partner-form-content hidden" style="box-shadow: none; padding-top: 40px;">
+                    <div class="partner-header">
+                        <i class="fa-solid fa-handshake"></i>
+                        <h2>Давайте познакомимся!</h2>
+                        <p>Заполните реквизиты, чтобы я мог автоматически формировать для вас Договоры и КП.</p>
+                    </div>
 
                     <form id="partner-form" onsubmit="event.preventDefault(); savePartnerProfile();">
                         <div class="form-group">
@@ -269,7 +268,6 @@
                 
                         <div class="form-group">
                             <label>ИНН</label>
-                            <!-- type="tel" открывает цифровую клавиатуру на мобилках -->
                             <input type="tel" id="p-inn" placeholder="Введите ИНН" maxlength="12">
                         </div>
 
@@ -287,8 +285,83 @@
                             Сохранить и Войти
                         </button>
                     </form>
-				</div>
-			</section>
+                </div>
+
+                <!-- СОСТОЯНИЕ 2: ЛИЧНЫЙ КАБИНЕТ (Виден, если данные есть) -->
+                <div id="partner-dashboard" class="hidden">
+                    <!-- Шапка кабинета -->
+                    <div class="lk-header">
+                        <div class="lk-avatar">
+                            <i class="fa-solid fa-building"></i>
+                        </div>
+                        <div class="lk-info">
+                            <h2 id="lk-company-name">Загрузка...</h2>
+                            <p id="lk-inn">ИНН: —</p>
+                        </div>
+                        <button class="btn-icon-only" onclick="togglePartnerEditMode(true)">
+                            <i class="fa-solid fa-pen"></i>
+                        </button>
+                    </div>
+
+                    <!-- Карточка лояльности (Полезная информация) -->
+                    <div class="loyalty-card">
+                        <div class="loyalty-row">
+                            <span>Ваш статус:</span>
+                            <strong id="lk-status">Новый партнер</strong>
+                        </div>
+                        <div class="loyalty-row">
+                            <span>Персональная скидка:</span>
+                            <strong style="font-size: 1.2rem;">0%</strong>
+                        </div>
+                        <div class="loyalty-desc">
+                            Сделайте первый заказ, чтобы получить статус "Постоянный клиент" и скидку 5%.
+                        </div>
+                    </div>
+
+                    <!-- Быстрые действия -->
+                    <div class="menu-list" style="margin-top: 0;">
+                        <div class="menu-item" onclick="window.open('https://t.me/EcoSubcontract')">
+                            <div class="menu-icon-box" style="background: rgba(36, 129, 204, 0.1); color: #2481cc;">
+                                <i class="fa-solid fa-headset"></i>
+                            </div>
+                            <div class="menu-text">
+                                <span>Персональный менеджер</span>
+                                <small>Написать Владимиру</small>
+                            </div>
+                            <i class="fa-solid fa-chevron-right arrow-icon"></i>
+                        </div>
+                        
+                        <div class="menu-item" onclick="alert('Функция в разработке. Скоро здесь будут ваши акты.')">
+                            <div class="menu-icon-box" style="background: rgba(46, 204, 113, 0.1); color: #2ecc71;">
+                                <i class="fa-solid fa-file-invoice"></i>
+                            </div>
+                            <div class="menu-text">
+                                <span>Мои документы</span>
+                                <small>Акты и счета</small>
+                            </div>
+                            <i class="fa-solid fa-chevron-right arrow-icon"></i>
+                        </div>
+                    </div>
+
+                    <!-- Техническая инфа -->
+                    <div class="lk-details">
+                        <h3>Реквизиты</h3>
+                        <div class="detail-row">
+                            <span>Контакт:</span>
+                            <span id="lk-contact">—</span>
+                        </div>
+                        <div class="detail-row">
+                            <span>Email:</span>
+                            <span id="lk-email">—</span>
+                        </div>
+                    </div>
+                    
+                    <button class="btn btn-outline full-width" onclick="logoutPartner()" style="border-color: var(--status-red); color: var(--status-red); margin-top: 20px;">
+                        <i class="fa-solid fa-arrow-right-from-bracket"></i> Выйти из профиля
+                    </button>
+                </div>
+
+            </section>
 
         </main> <!-- Конец #main-content -->
 

@@ -312,31 +312,46 @@ function initSimpleCalculator() {
 // === 4. ПРОФИЛЬ ПАРТНЕРА ===
 function checkFirstVisit() {
     const data = localStorage.getItem('eco_partner_profile');
+    const authBlock = document.getElementById('partner-auth');
+    const dashBlock = document.getElementById('partner-dashboard');
+
     if (!data) {
-        // Переключение на таб "Мой профиль"
+        // Данных нет -> Показываем форму регистрации
+        authBlock?.classList.remove('hidden');
+        dashBlock?.classList.add('hidden');
+        
+        // Авто-переключение на вкладку профиля при первом входе
         setTimeout(() => {
-            const btn = document.querySelector('.nav-item[data-target="view-partner"]');
-            if(btn) btn.click();
+            document.querySelector('.nav-item[data-target="view-partner"]')?.click();
         }, 500);
     } else {
-        loadPartnerDataToForm();
+        // Данные есть -> Показываем ЛК
+        authBlock?.classList.add('hidden');
+        dashBlock?.classList.remove('hidden');
+        renderPartnerDashboard(JSON.parse(data));
     }
 }
 
-function loadPartnerDataToForm() {
-    const stored = localStorage.getItem('eco_partner_profile');
-    if (stored) {
-        try {
-            const p = JSON.parse(stored);
-            if(document.getElementById('p-name')) document.getElementById('p-name').value = p.name || '';
-            if(document.getElementById('p-inn')) document.getElementById('p-inn').value = p.inn || '';
-            if(document.getElementById('p-contact')) document.getElementById('p-contact').value = p.contact || '';
-            if(document.getElementById('p-email')) document.getElementById('p-email').value = p.email || '';
-        } catch(e) {}
+// Заполнение дашборда данными из LocalStorage
+function renderPartnerDashboard(data) {
+    if(document.getElementById('lk-company-name')) document.getElementById('lk-company-name').textContent = data.name;
+    if(document.getElementById('lk-inn')) document.getElementById('lk-inn').textContent = data.inn ? `ИНН: ${data.inn}` : 'ИНН: —';
+    if(document.getElementById('lk-contact')) document.getElementById('lk-contact').textContent = data.contact || '—';
+    if(document.getElementById('lk-email')) document.getElementById('lk-email').textContent = data.email || '—';
+
+    // Пример логики статуса (можно усложнить)
+    const statusEl = document.getElementById('lk-status');
+    if(statusEl) {
+        if (data.ordersCount > 0) {
+            statusEl.textContent = "Постоянный клиент";
+            // Тут можно менять % скидки
+        } else {
+            statusEl.textContent = "Новый партнер";
+        }
     }
 }
 
-// Глобальная функция сохранения (вызывается из HTML)
+// Сохранение профиля (Кнопка "Сохранить и Войти")
 window.savePartnerProfile = function() {
     const nameInput = document.getElementById('p-name');
     if (!nameInput || !nameInput.value.trim()) {
@@ -348,22 +363,51 @@ window.savePartnerProfile = function() {
         name: nameInput.value,
         inn: document.getElementById('p-inn')?.value,
         contact: document.getElementById('p-contact')?.value,
-        email: document.getElementById('p-email')?.value
+        email: document.getElementById('p-email')?.value,
+        ordersCount: 0 // Счетчик заказов для будущего
     };
 
     localStorage.setItem('eco_partner_profile', JSON.stringify(partnerData));
     
-    const btn = document.querySelector('#view-partner .btn-primary');
-    if(btn) {
-        const oldText = btn.textContent;
-        btn.textContent = 'Сохранено! ✅';
-        btn.style.background = 'var(--status-green)';
-        
-        setTimeout(() => {
-            btn.textContent = oldText;
-            btn.style.background = '';
-            document.querySelector('.nav-item[data-target="view-profile"]')?.click();
-        }, 800);
+    // Перезагружаем состояние экрана без перезагрузки страницы
+    checkFirstVisit();
+    
+    // Уведомление
+    if(tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+};
+
+// Кнопка "Редактировать" (карандаш)
+window.togglePartnerEditMode = function(isEdit) {
+    const authBlock = document.getElementById('partner-auth');
+    const dashBlock = document.getElementById('partner-dashboard');
+    
+    if (isEdit) {
+        // Заполняем форму текущими данными
+        const stored = localStorage.getItem('eco_partner_profile');
+        if(stored) {
+            const p = JSON.parse(stored);
+            document.getElementById('p-name').value = p.name;
+            document.getElementById('p-inn').value = p.inn;
+            document.getElementById('p-contact').value = p.contact;
+            document.getElementById('p-email').value = p.email;
+        }
+        // Показываем форму
+        authBlock?.classList.remove('hidden');
+        dashBlock?.classList.add('hidden');
+    } else {
+        // Отмена (возврат в дашборд)
+        checkFirstVisit();
+    }
+};
+
+// Кнопка "Выйти" (Сброс данных)
+window.logoutPartner = function() {
+    if(confirm('Вы уверены, что хотите удалить профиль организации с этого устройства?')) {
+        localStorage.removeItem('eco_partner_profile');
+        // Очищаем поля
+        document.getElementById('partner-form').reset();
+        // Возвращаем на экран регистрации
+        checkFirstVisit();
     }
 };
 
