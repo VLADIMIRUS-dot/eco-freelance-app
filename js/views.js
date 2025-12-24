@@ -175,27 +175,142 @@ function renderServicesListView(services) {
 }
 
 /** 5. CRM */
+// js/views.js (часть файла)
+
+function renderCRMHTML(container, partners, totalDebt, totalPotential) {
+    // 1. Рисуем Дашборд и Фильтры (Вставляем их ПЕРЕД списком)
+    // В index.html мы очищаем контейнер, поэтому нужно каждый раз рисовать шапку заново
+    // Либо можно разделить контейнеры в HTML. Для простоты отрисуем всё здесь.
+
+    let html = `
+        <!-- Поиск -->
+        <div class="crm-search-box">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <input type="text" placeholder="Поиск по названию или ИНН..." 
+                   class="full-width" oninput="onCRMSearch(this.value)">
+        </div>
+
+        <!-- Статистика -->
+        <div class="crm-stats-row">
+            <div class="stat-box">
+                <strong class="text-debt">${totalDebt.toLocaleString()} ₽</strong>
+                <small>Общий долг мне</small>
+            </div>
+            <div class="stat-box">
+                <strong class="text-profit">${totalPotential.toLocaleString()} ₽</strong>
+                <small>Ожидаемая выручка</small>
+            </div>
+        </div>
+
+        <!-- Фильтры -->
+        <div class="crm-filters">
+            <span class="crm-chip ${crmFilterStatus === 'all' ? 'active' : ''}" onclick="setCRMFilter('all', this)">Все</span>
+            <span class="crm-chip alert ${crmFilterStatus === 'debt' ? 'active' : ''}" onclick="setCRMFilter('debt', this)">⚠️ Должники</span>
+            <span class="crm-chip ${crmFilterStatus === 'active' ? 'active' : ''}" onclick="setCRMFilter('active', this)">В работе</span>
+            <span class="crm-chip ${crmFilterStatus === 'lead' ? 'active' : ''}" onclick="setCRMFilter('lead', this)">Лиды</span>
+        </div>
+    `;
+
+    // 2. Рисуем Список
+    if (partners.length === 0) {
+        html += `<div style="text-align:center; padding:30px; color:#999;">Никого не найдено</div>`;
+    } else {
+        html += partners.map(p => {
+            // Расчет полоски финансов
+            const percentPaid = Math.min(100, (p.finance.paid / p.finance.total) * 100) || 0;
+            const percentDebt = Math.min(100, (p.finance.debt / p.finance.total) * 100) || 0;
+            
+            // Звезды
+            let stars = '';
+            for(let i=1; i<=5; i++) {
+                stars += `<i class="fa-solid fa-star" style="color: ${i <= p.rating ? '#f1c40f' : '#ddd'}; font-size: 0.7rem;"></i>`;
+            }
+
+            // Проекты (бейджи)
+            const projectsHTML = p.projects.map(prj => 
+                `<span class="project-badge active">${prj.type}</span>`
+            ).join('');
+
+            return `
+            <div class="crm-card-modern">
+                <!-- Шапка карточки (Кликабельна для раскрытия) -->
+                <div onclick="toggleCRMDetails(${p.id})">
+                    <div class="crm-top-row">
+                        <div>
+                            <div class="crm-name">${p.name}</div>
+                            <span class="crm-inn-tiny">ИНН: ${p.inn}</span>
+                            <div class="rating-stars-mini">${stars}</div>
+                        </div>
+                        <i class="fa-solid fa-chevron-down" id="crm-arrow-${p.id}" style="color:#ccc; transition:0.3s;"></i>
+                    </div>
+
+                    <div class="crm-tags-row">
+                        ${projectsHTML}
+                        ${p.finance.debt > 0 ? '<span class="project-badge" style="background:#ffebee; color:#c62828;">Долг</span>' : ''}
+                    </div>
+
+                    <!-- Полоска денег -->
+                    <div class="fin-bar-wrapper">
+                        <div class="fin-segment-paid" style="width: ${percentPaid}%"></div>
+                        <div class="fin-segment-debt" style="width: ${percentDebt}%"></div>
+                    </div>
+                    <div class="fin-text-row">
+                        <span style="color:var(--status-green)">${p.finance.paid.toLocaleString()}</span>
+                        ${p.finance.debt > 0 ? `<strong style="color:var(--status-red)">-${p.finance.debt.toLocaleString()}</strong>` : '<span style="color:#ccc">0</span>'}
+                    </div>
+                </div>
+
+                <!-- Скрытые детали -->
+                <div class="crm-details" id="crm-details-${p.id}">
+                    <div class="crm-detail-item">
+                        <i class="fa-solid fa-file-signature"></i> 
+                        <span>${p.contract}</span>
+                    </div>
+                    <div class="crm-detail-item">
+                        <i class="fa-solid fa-user"></i> 
+                        <span>${p.contact}</span>
+                    </div>
+                    <div class="crm-detail-item">
+                        <i class="fa-solid fa-phone"></i> 
+                        <span>${p.phone || "Нет номера"}</span>
+                    </div>
+                    
+                    <div style="background:rgba(0,0,0,0.03); padding:8px; border-radius:8px; font-size:0.85rem; margin:10px 0; color:#555;">
+                        <i class="fa-solid fa-message" style="margin-right:5px;"></i> ${p.note}
+                    </div>
+
+                    <div class="crm-btns-row">
+                        <div class="crm-action-btn" onclick="openPartnerChat('${p.username}')">
+                            <i class="fa-brands fa-telegram" style="color:#2481cc"></i> TG
+                        </div>
+                        <div class="crm-action-btn" onclick="copyINN('${p.inn}')">
+                            <i class="fa-solid fa-copy"></i> ИНН
+                        </div>
+                        <div class="crm-action-btn" style="color:var(--status-red)" onclick="deletePartner(${p.id})">
+                            <i class="fa-solid fa-trash"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            `;
+        }).join('');
+    }
+
+    container.innerHTML = html;
+}
+
+// Заменяем старую функцию renderPartnersView на вызов новой логики
 function renderPartnersView(partners) {
-    const container = document.getElementById('partners-list');
-    const debtDisplay = document.getElementById('fin-debt');
-    const waitDisplay = document.getElementById('fin-wait');
-    if (!container) return;
-    let totalDebt = 0; let totalWait = 0;
-    container.innerHTML = partners.map(p => {
-        totalDebt += p.finances.debt; totalWait += p.finances.wait;
-        let badgeColor = 'var(--status-green)';
-        if (p.rating <= 2 || p.finances.debt > 0) badgeColor = 'var(--status-red)';
-        let starsHTML = '';
-        for (let i = 1; i <= 5; i++) {
-            const starClass = i <= p.rating ? 'fa-solid' : 'fa-regular';
-            const colorStyle = i <= p.rating ? 'color: #f1c40f;' : 'color: #ccc;';
-            starsHTML += `<i class="${starClass} fa-star star-btn" style="${colorStyle}" onclick="updatePartnerRating(${p.id}, ${i})"></i>`;
-        }
-        const tgButton = p.username ? `<button class="btn-mini btn-tg" onclick="openPartnerChat('${p.username}')"><i class="fa-brands fa-telegram"></i> Чат</button>` : `<span class="no-tg"><i class="fa-solid fa-ban"></i> Нет TG</span>`;
-        return `<div class="partner-card-crm" style="border-left: 5px solid ${badgeColor};"><div class="crm-header"><div class="crm-title"><h3>${p.name}</h3><div class="crm-inn">ИНН: ${p.inn || 'Не указан'}</div></div><button class="btn-icon-delete" onclick="deletePartner(${p.id})"><i class="fa-solid fa-trash"></i></button></div><div class="crm-contacts"><div class="crm-row"><i class="fa-solid fa-user"></i> ${p.contact}</div><div class="crm-row"><i class="fa-solid fa-envelope"></i> ${p.email || 'Нет email'}</div></div><div class="crm-actions"><div class="crm-stars">${starsHTML}</div>${tgButton}</div><div class="crm-notes"><label>Заметка:</label><textarea onchange="updatePartnerNote(${p.id}, this.value)">${p.note || ''}</textarea></div>${p.finances.debt > 0 ? `<div class="crm-debt-alert">⚠️ Долг: ${p.finances.debt.toLocaleString()} ₽</div>` : ''}</div>`;
-    }).join('');
-    if (debtDisplay) debtDisplay.textContent = totalDebt.toLocaleString() + ' ₽';
-    if (waitDisplay) waitDisplay.textContent = totalWait.toLocaleString() + ' ₽';
+    // Просто вызываем логику рендера (она сама возьмет данные)
+    // Но так как views.js не должен знать про логику фильтрации, 
+    // мы сделаем renderPartnersView простой оберткой для инициализации.
+    
+    // В идеале view должна быть "глупой", но для простоты SPA
+    // мы передадим управление в logic.js, если эта функция вызвана.
+    
+    if (typeof renderModernCRM === 'function') {
+        renderModernCRM(); 
+    }
 }
 
 function toggleAdminElementsView(show) {
@@ -205,3 +320,4 @@ function toggleAdminElementsView(show) {
         else el.classList.add('hidden');
     });
 }
+
