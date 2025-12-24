@@ -26,19 +26,40 @@ console.log(`[App] User: ${currentUserId}, Admin: ${isAdmin}`);
 
 
 // === 2. ИНИЦИАЛИЗАЦИЯ ===
+// === 2. ИНИЦИАЛИЗАЦИЯ ===
 document.addEventListener('DOMContentLoaded', () => {
     try {
+        // 1. Сообщаем Телеграму, что мы готовы
         tg.ready();
         tg.expand(); 
+
+        // 2. ЖЕСТКО КРАСИМ ФОН (Анти-мерцание)
+        // Берем цвет фона прямо из параметров Телеграма
+        // Если их нет (браузер), ставим дефолтный
+        const bgColor = tg.themeParams?.bg_color || '#ffffff';
+        document.body.style.backgroundColor = bgColor;
         
+        // Красим хедер самого Телеграма
+        if(tg.setHeaderColor) tg.setHeaderColor(bgColor);
+        if(tg.setBackgroundColor) tg.setBackgroundColor(bgColor);
+
+        // 3. Запускаем логику приложения
         initTheme();
         initNavigation();
         initViews();
         checkFirstVisit();
         
+        // 4. ПЛАВНО ПОКАЗЫВАЕМ ПРИЛОЖЕНИЕ
+        // Небольшая задержка, чтобы браузер успел отрисовать фон
+        requestAnimationFrame(() => {
+            document.body.classList.add('app-loaded');
+        });
+        
         console.log("[App] Инициализация прошла успешно");
     } catch (e) {
         console.error("[App] Ошибка инициализации:", e);
+        // В случае ошибки все равно показываем приложение, чтобы не было белого экрана
+        document.body.classList.add('app-loaded');
     }
 });
 
@@ -691,3 +712,4 @@ window.saveNewStatus = function() {
     // Выводим алерт с JSON, чтобы вы могли скопировать в data.js
     alert("Статус обновлен (Локально)!\n\nЧтобы клиенты увидели это изменение, скопируйте объект ниже в data.js:\n\n" + JSON.stringify(newStatus));
 };
+
