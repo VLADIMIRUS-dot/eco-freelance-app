@@ -1006,4 +1006,175 @@ input[type=range] {
     border-color: var(--tg-theme-text-color);
     transform: scale(1.1);
 }
+/* ===========================
+   CRM 2.0 STYLES
+   =========================== */
+
+/* Поиск */
+.crm-search-box {
+    position: relative;
+    margin-bottom: 15px;
+}
+.crm-search-box input {
+    padding-left: 40px;
+    background: var(--tg-theme-secondary-bg-color);
+    border: none;
+    height: 44px;
+    border-radius: 12px;
+    font-size: 0.95rem;
+}
+.crm-search-box i {
+    position: absolute;
+    left: 14px;
+    top: 14px;
+    color: var(--tg-theme-hint-color);
+}
+
+/* Фильтры (Чипсы) */
+.crm-filters {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 5px;
+    margin-bottom: 15px;
+    /* Скрываем скроллбар */
+    scrollbar-width: none; 
+}
+.crm-filters::-webkit-scrollbar { display: none; }
+
+.crm-chip {
+    padding: 6px 14px;
+    background: var(--tg-theme-secondary-bg-color);
+    border-radius: 20px;
+    font-size: 0.85rem;
+    white-space: nowrap;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: all 0.2s;
+}
+.crm-chip.active {
+    background: var(--tg-theme-button-color);
+    color: white;
+    font-weight: 600;
+}
+.crm-chip.alert {
+    color: var(--status-red);
+    border-color: var(--status-red);
+    background: transparent;
+}
+.crm-chip.alert.active {
+    background: var(--status-red);
+    color: white;
+}
+
+/* Финансовый Дашборд (Мини) */
+.crm-stats-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+.stat-box {
+    background: var(--tg-theme-secondary-bg-color);
+    padding: 12px;
+    border-radius: 12px;
+    text-align: center;
+}
+.stat-box small { display: block; color: var(--tg-theme-hint-color); font-size: 0.75rem; }
+.stat-box strong { font-size: 1.1rem; display: block; margin-top: 4px; }
+.text-debt { color: var(--status-red); }
+.text-profit { color: var(--status-green); }
+
+/* Карточка Клиента 2.0 */
+.crm-card-modern {
+    background: var(--tg-theme-secondary-bg-color);
+    border-radius: 16px;
+    padding: 16px;
+    margin-bottom: 12px;
+    position: relative;
+    transition: transform 0.1s;
+}
+.crm-card-modern:active { transform: scale(0.99); }
+
+.crm-top-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 10px;
+}
+.crm-name { font-weight: 700; font-size: 1rem; line-height: 1.3; margin-bottom: 2px; }
+.crm-inn-tiny { font-size: 0.75rem; color: var(--tg-theme-hint-color); font-family: monospace; }
+
+/* Бейджи проектов */
+.crm-tags-row {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+}
+.project-badge {
+    font-size: 0.7rem;
+    padding: 2px 8px;
+    border-radius: 6px;
+    background: rgba(0,0,0,0.05);
+    color: var(--tg-theme-hint-color);
+}
+.project-badge.active { background: rgba(36, 129, 204, 0.15); color: var(--tg-theme-button-color); }
+
+/* Финансы (Полоска) */
+.fin-bar-wrapper {
+    height: 8px;
+    background: rgba(0,0,0,0.1);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 8px;
+    display: flex;
+}
+.fin-segment-paid { background: var(--status-green); height: 100%; }
+.fin-segment-debt { background: var(--status-red); height: 100%; }
+
+.fin-text-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.8rem;
+    margin-bottom: 12px;
+}
+
+/* Раскрывающаяся часть */
+.crm-details {
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid rgba(0,0,0,0.05);
+    display: none; /* Скрыто по умолчанию */
+    animation: fadeIn 0.3s;
+}
+.crm-details.open { display: block; }
+
+.crm-detail-item {
+    font-size: 0.9rem;
+    margin-bottom: 8px;
+    display: flex;
+    gap: 10px;
+}
+.crm-detail-item i { width: 20px; text-align: center; color: var(--tg-theme-hint-color); }
+
+.crm-btns-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px;
+    margin-top: 15px;
+}
+.crm-action-btn {
+    background: var(--tg-theme-bg-color);
+    border: 1px solid rgba(0,0,0,0.1);
+    border-radius: 8px;
+    padding: 8px;
+    font-size: 0.8rem;
+    text-align: center;
+    cursor: pointer;
+}
+.crm-action-btn:hover { background: rgba(0,0,0,0.02); }
+
+/* Звезды рейтинга */
+.rating-stars-mini { font-size: 0.8rem; margin-top: 4px; }
 
