@@ -19,18 +19,14 @@ function renderProfileView(profileData) {
     if (savedStatus) {
         try {
             const parsed = JSON.parse(savedStatus);
-            // Перезаписываем данные только для отображения
             profileData.workload = parsed; 
         } catch(e) {}
     }
 
     const container = document.getElementById('view-profile');
     if (!container) return;
-
-    // Генерируем HTML полностью через JS, чтобы вставить кнопку и логику
-    // Иконка карандаша видна только если isAdmin (класс admin-only)
-    // Но так как логика isAdmin в logic.js, мы просто добавим класс, а logic.js его покажет
     
+    // Иконка карандаша (видна только если есть класс admin-only)
     const editBtnHTML = `<i class="fa-solid fa-pen-to-square admin-only edit-status-icon" onclick="openStatusEditor()"></i>`;
 
     container.innerHTML = `
@@ -47,13 +43,7 @@ function renderProfileView(profileData) {
             </div>
         </header>
 
-        <!-- НОВАЯ КНОПКА CTA -->
-        <div style="margin-bottom: 20px;">
-            <button class="btn btn-primary full-width cta-main-btn" onclick="goToCalculator()">
-                <i class="fa-solid fa-rocket"></i> ЗАКАЗАТЬ РАЗРАБОТКУ
-            </button>
-        </div>
-
+        <!-- БЛОК ЗАГРУЗКИ -->
         <div class="status-section">
             <div style="display:flex; justify-content:space-between; align-items:center;">
                 <h3>Моя загрузка ${editBtnHTML}</h3>
@@ -66,6 +56,7 @@ function renderProfileView(profileData) {
             </div>
         </div>
 
+        <!-- ГЕОГРАФИЯ -->
         <div class="geo-section">
             <div class="geo-header">
                 <h3>География работ</h3>
@@ -73,11 +64,24 @@ function renderProfileView(profileData) {
             <div id="bubbles-cloud" class="bubbles-container"></div>
         </div>
         
+        <!-- КНОПКИ ДЕЙСТВИЙ -->
         <div class="action-buttons">
-            <button class="btn btn-outline full-width" onclick="window.open('${CONFIG.TELEGRAM_LINK}')">
-                <i class="fa-brands fa-telegram"></i> Написать в ЛС
+            <!-- 1. Написать мне (Телеграм) -->
+            <button class="btn btn-primary" onclick="window.open('${CONFIG.TELEGRAM_LINK}')">
+                <i class="fa-brands fa-telegram"></i> Написать мне
             </button>
-            <!-- Остальное меню... -->
+            
+            <!-- 2. НОВАЯ КНОПКА: Заказать (Калькулятор) -->
+            <!-- Используем тот же стиль btn-primary, но другую иконку -->
+            <button class="btn btn-primary" onclick="goToCalculator()">
+                <i class="fa-solid fa-calculator"></i> Заказать разработку
+            </button>
+
+            <!-- 3. Резюме (Оставим outline, чтобы не было "светофора" из 3 залитых кнопок) -->
+            <button class="btn btn-outline">
+                <i class="fa-solid fa-file-pdf"></i> Скачать Резюме
+            </button>
+            
             <div class="menu-list">
                 ${profileData.documents.map(doc => `
                     <div class="menu-item" onclick="alert('Открываем документ: ${doc.title}')">
@@ -376,3 +380,4 @@ function toggleAdminElementsView(show) {
     });
 
 }
+
