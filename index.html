@@ -5,57 +5,65 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>EcoFreelance App</title>
 
-    <!-- 1. КРИТИЧЕСКИЙ СТИЛЬ (ВСТАВЛЕН ПРЯМО В HTML) -->
-    <!-- Это загружается мгновенно и убирает белую вспышку -->
+    <!-- 1. ПРЕДОТВРАЩЕНИЕ БЕЛОГО ЭКРАНА (CSS) -->
+    <!-- Красим фон страницы сразу в темный цвет. JS потом поменяет на тему Телеграма. -->
     <style>
-        body {
+        html, body {
+            background-color: #212121; /* Темный фон по дефолту */
             margin: 0;
             padding: 0;
-            background-color: #212121; /* Темный фон по умолчанию */
-            color: #fff;
-            font-family: -apple-system, BlinkMacSystemFont, Roboto, Helvetica, Arial, sans-serif;
-            overflow: hidden; /* Блокируем скролл пока грузится */
+            overscroll-behavior: none; /* Блокируем "резинку" на iOS (белые полосы при прокрутке) */
+            -webkit-overflow-scrolling: touch;
         }
 
-        /* Маска загрузки */
+        /* Изначально приложение скрыто стилем inline, чтобы CSS файл не влиял на это */
+        #app-wrapper {
+            display: none; /* Жестко скрываем */
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out;
+        }
+
+        /* Стили прелоадера */
         #preloader {
             position: fixed;
             top: 0; left: 0;
             width: 100%; height: 100%;
-            background-color: #212121; /* Цвет фона при загрузке */
-            z-index: 99999; /* Поверх всего */
+            background-color: #212121;
+            z-index: 99999;
             display: flex;
             justify-content: center;
             align-items: center;
             flex-direction: column;
-            transition: opacity 0.3s ease-out;
         }
 
-        /* Анимация спиннера */
         .spinner {
             width: 40px; height: 40px;
             border: 4px solid rgba(255,255,255,0.1);
-            border-top: 4px solid #3498db; /* Синий цвет */
+            border-top: 4px solid #3498db;
             border-radius: 50%;
             animation: spin 1s linear infinite;
-            margin-bottom: 15px;
         }
-
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-
-        /* Скрываем основное приложение пока грузится */
-        #app-wrapper { opacity: 0; transition: opacity 0.5s; }
     </style>
 
-    <!-- Скрипт для мгновенной покраски фона в цвет темы Телеграма -->
+    <!-- 2. СИНХРОНИЗАЦИЯ ЦВЕТА (JS) -->
+    <!-- Выполняется до отрисовки -->
     <script>
         try {
             var tg = window.Telegram.WebApp;
             if (tg) {
-                // Если есть тема Телеграма, красим прелоадер в этот цвет
-                var bg = tg.themeParams.bg_color || '#212121';
+                tg.ready();
+                // Получаем цвет фона из Телеграма
+                var bg = tg.themeParams.secondary_bg_color || tg.themeParams.bg_color || '#212121';
+                
+                // Красим HTML, BODY и PRELOADER в один цвет
                 document.documentElement.style.backgroundColor = bg;
                 document.body.style.backgroundColor = bg;
+                
+                // Важно: создаем стиль динамически, чтобы перебить CSS
+                var style = document.createElement('style');
+                style.innerHTML = '#preloader { background-color: ' + bg + ' !important; }';
+                document.head.appendChild(style);
             }
         } catch(e) {}
     </script>
@@ -64,103 +72,87 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
-    <!-- Ваши стили -->
+    <!-- ВАШИ СТИЛИ -->
+    <!-- Убедитесь, что в style.css НЕТ правила #app-wrapper { opacity: 0 } -->
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/desktop.css">
 </head>
 <body>
 
-    <!-- === ПРЕЛОАДЕР (Виден сразу) === -->
+    <!-- ПРЕЛОАДЕР -->
     <div id="preloader">
         <div class="spinner"></div>
-        <div style="font-size: 12px; opacity: 0.6;">Загрузка...</div>
     </div>
 
-    <!-- === ОСНОВНОЕ ПРИЛОЖЕНИЕ === -->
+    <!-- ПРИЛОЖЕНИЕ -->
     <div id="app-wrapper">
         <main id="main-content">
-
-            <!-- ПРОФИЛЬ -->
+            <!-- Профиль -->
             <section id="view-profile" class="view active"></section>
 
-            <!-- ПРОЕКТЫ -->
+            <!-- Проекты -->
             <section id="view-projects" class="view">
                 <div class="section-header">
                     <h2>Проекты</h2>
                     <div class="filters admin-only hidden">
-                        <span class="filter-chip active">Все</span>
-                        <span class="filter-chip">Должники</span>
-                        <span class="filter-chip">В работе</span>
+                        <span class="filter-chip active">Все</span><span class="filter-chip">В работе</span>
                     </div>
                 </div>
                 <div id="projects-list" class="projects-container">
-                    <div class="empty-state">
-                        <i class="fa-solid fa-folder-open"></i><p>Загрузка...</p>
-                    </div>
+                    <div class="empty-state"><i class="fa-solid fa-folder-open"></i><p>Загрузка...</p></div>
                 </div>
             </section>
 
-            <!-- КАЛЬКУЛЯТОР -->
+            <!-- Калькулятор -->
             <section id="view-services" class="view">
                 <div class="calc-mode-switch">
                     <button class="mode-btn active" onclick="switchCalcMode('simple', this)">Быстрый</button>
                     <button class="mode-btn" onclick="switchCalcMode('advanced', this)">Смета (КП)</button>
                 </div>
-                <!-- Simple Mode -->
                 <div id="calc-simple-mode">
                     <div class="calculator-card">
-                        <div class="form-group">
-                            <label>Что проектируем?</label>
-                            <select id="calc-service-type"></select>
-                        </div>
+                        <div class="form-group"><label>Услуга</label><select id="calc-service-type"></select></div>
                         <div id="dynamic-calc-inputs"></div>
-                        <div class="form-group">
-                            <label>Документы</label>
-                            <div class="file-upload-area" id="file-drop-zone">
-                                <input type="file" id="calc-file-input" multiple hidden>
-                                <i class="fa-solid fa-cloud-arrow-up"></i>
-                                <span id="file-upload-text">Файлы</span>
-                            </div>
+                        <div class="form-group"><label>Файлы</label>
+                            <div class="file-upload-area" id="file-drop-zone"><input type="file" id="calc-file-input" multiple hidden><i class="fa-solid fa-cloud-arrow-up"></i><span>Выбрать</span></div>
                             <div id="file-list-display" class="file-list"></div>
                         </div>
                         <div class="calc-result">
-                            <div class="price-box"><span>Ориентир:</span><h3 id="calc-total-price">0 ₽</h3></div>
-                            <div class="time-box"><span>Срок:</span><strong id="calc-total-time">0 дней</strong></div>
+                            <div class="price-box"><span>Цена:</span><h3 id="calc-total-price">0 ₽</h3></div>
                         </div>
-                        <button class="btn btn-primary full-width" id="btn-order-calc">Обсудить расчет</button>
+                        <button class="btn btn-primary full-width" id="btn-order-calc">Заказать</button>
                     </div>
-                    <div class="services-list"><h3>Список услуг</h3><div id="services-container"></div></div>
+                    <div class="services-list"><h3>Услуги</h3><div id="services-container"></div></div>
                 </div>
-                <!-- Advanced Mode -->
                 <div id="calc-advanced-mode" class="hidden">
                     <div id="estimate-container"></div>
-                    <button class="btn btn-outline full-width dashed-btn" onclick="addNewObjectToEstimate()"><i class="fa-solid fa-plus"></i> Добавить объект</button>
+                    <button class="btn btn-outline full-width dashed-btn" onclick="addNewObjectToEstimate()"><i class="fa-solid fa-plus"></i> Объект</button>
                     <div class="estimate-footer">
                         <div class="total-row"><span>Итого:</span><strong id="estimate-total-sum">0 ₽</strong></div>
-                        <button class="btn btn-primary full-width" onclick="sendEstimateToTelegram()">📄 Получить КП</button>
+                        <button class="btn btn-primary full-width" onclick="sendEstimateToTelegram()">Получить КП</button>
                     </div>
                 </div>
             </section>
 
-            <!-- ПАРТНЕРЫ (CRM) -->
+            <!-- Партнеры -->
             <section id="view-partners" class="view admin-only hidden">
-                <div class="section-header"><h2>Партнеры (CRM)</h2></div>
+                <div class="section-header"><h2>CRM</h2></div>
                 <div class="finance-dashboard">
-                    <div class="fin-card red"><span>Дебиторка</span><strong id="fin-debt">0 ₽</strong></div>
-                    <div class="fin-card green"><span>Ожидаю</span><strong id="fin-wait">0 ₽</strong></div>
+                    <div class="fin-card red"><span>Долг</span><strong id="fin-debt">0</strong></div>
+                    <div class="fin-card green"><span>Ожидаю</span><strong id="fin-wait">0</strong></div>
                 </div>
                 <div id="partners-list" class="partners-list"></div>
             </section>
 
-            <!-- ПРОФИЛЬ ПАРТНЕРА -->
+            <!-- Профиль партнера -->
             <section id="view-partner" class="view">
                 <div id="partner-auth" class="modal-content partner-form-content hidden" style="box-shadow: none; padding-top: 40px;">
-                    <div class="partner-header"><i class="fa-solid fa-handshake"></i><h2>Знакомство</h2><p>Введите реквизиты для автоматизации.</p></div>
+                    <div class="partner-header"><i class="fa-solid fa-handshake"></i><h2>Вход</h2></div>
                     <form id="partner-form" onsubmit="event.preventDefault(); savePartnerProfile();">
-                        <div class="form-group"><label>Организация</label><input type="text" id="p-name" required></div>
-                        <div class="form-group"><label>ИНН</label><input type="tel" id="p-inn"></div>
-                        <div class="form-group"><label>Имя</label><input type="text" id="p-contact"></div>
-                        <div class="form-group"><label>Email</label><input type="email" id="p-email"></div>
+                        <div class="form-group"><input type="text" id="p-name" placeholder="Название" required></div>
+                        <div class="form-group"><input type="tel" id="p-inn" placeholder="ИНН"></div>
+                        <div class="form-group"><input type="text" id="p-contact" placeholder="Имя"></div>
+                        <div class="form-group"><input type="email" id="p-email" placeholder="Email"></div>
                         <button type="submit" class="btn btn-primary full-width">Войти</button>
                     </form>
                 </div>
@@ -172,21 +164,19 @@
                     </div>
                     <div class="loyalty-card">
                         <div class="loyalty-row"><span>Статус:</span><strong id="lk-status">...</strong></div>
-                        <div class="loyalty-desc">Ваша скидка и статистика.</div>
                     </div>
-                    <div class="menu-list" style="margin-top: 0;">
+                    <div class="menu-list" style="margin-top:0;">
                         <div class="menu-item" onclick="window.open('https://t.me/EcoSubcontract')">
-                            <div class="menu-icon-box" style="background: rgba(36, 129, 204, 0.1); color: #2481cc;"><i class="fa-solid fa-headset"></i></div>
-                            <div class="menu-text"><span>Менеджер</span><small>Связь</small></div>
+                            <div class="menu-icon-box" style="background:rgba(36,129,204,0.1);color:#2481cc;"><i class="fa-solid fa-headset"></i></div>
+                            <div class="menu-text"><span>Поддержка</span></div>
                         </div>
                     </div>
-                    <button class="btn btn-outline full-width" onclick="logoutPartner()" style="color: var(--status-red); margin-top: 20px;">Выйти</button>
+                    <button class="btn btn-outline full-width" onclick="logoutPartner()" style="color:var(--status-red);margin-top:20px;">Выйти</button>
                 </div>
             </section>
-
         </main>
 
-        <!-- МОДАЛКИ -->
+        <!-- Модалки -->
         <div id="project-detail-modal" class="modal hidden">
             <div class="modal-content"><span class="close-modal">&times;</span><div id="modal-body"></div></div>
         </div>
@@ -194,15 +184,14 @@
         <div id="status-edit-modal" class="modal hidden">
             <div class="modal-content">
                 <span class="close-modal" onclick="closeStatusModal()">&times;</span>
-                <h3>Редактор загрузки</h3>
-                <div class="form-group"><label>Процент: <span id="edit-percent-val">0</span>%</label><input type="range" id="edit-percent" min="0" max="100" step="5"></div>
+                <h3>Редактор</h3>
+                <div class="form-group"><label>Загрузка: <span id="edit-percent-val">0</span>%</label><input type="range" id="edit-percent" min="0" max="100" step="5"></div>
                 <div class="form-group"><label>Текст</label><input type="text" id="edit-status-text"></div>
                 <div class="form-group">
                     <div class="color-picker-row">
                         <div class="color-circle" style="background:#2ecc71" onclick="selectStatusColor('#2ecc71')"></div>
                         <div class="color-circle" style="background:#f1c40f" onclick="selectStatusColor('#f1c40f')"></div>
                         <div class="color-circle" style="background:#e74c3c" onclick="selectStatusColor('#e74c3c')"></div>
-                        <div class="color-circle" style="background:#3498db" onclick="selectStatusColor('#3498db')"></div>
                     </div>
                     <input type="hidden" id="edit-status-color">
                 </div>
@@ -219,34 +208,31 @@
         </nav>
     </div>
 
-    <!-- СКРИПТЫ (Загружаются в конце) -->
     <script src="js/data.js" defer></script>
     <script src="js/views.js" defer></script>
     <script src="js/logic.js" defer></script>
 
-    <!-- СКРИПТ ДЛЯ УДАЛЕНИЯ ПРЕЛОАДЕРА -->
+    <!-- СКРИПТ ПЛАВНОГО ПОЯВЛЕНИЯ -->
     <script>
-        // Этот код сработает когда загрузятся все defer скрипты
-        window.onload = function() {
-            setTimeout(function() {
-                var preloader = document.getElementById('preloader');
-                var app = document.getElementById('app-wrapper');
-                
-                // Красим прелоадер в цвет фона приложения перед исчезновением
-                // Чтобы переход был бесшовным
-                if(window.Telegram && window.Telegram.WebApp) {
-                    preloader.style.backgroundColor = window.Telegram.WebApp.themeParams.bg_color;
-                }
+        window.addEventListener('load', function() {
+            var preloader = document.getElementById('preloader');
+            var app = document.getElementById('app-wrapper');
 
+            // 1. Сначала делаем приложение видимым, но прозрачным
+            app.style.display = 'block';
+
+            // 2. Небольшая задержка, чтобы браузер отрендерил блок
+            requestAnimationFrame(function() {
+                // 3. Плавно скрываем прелоадер и показываем апп
                 preloader.style.opacity = '0';
                 app.style.opacity = '1';
-                document.body.style.overflow = 'auto'; // Включаем скролл
-
+                
+                // 4. Удаляем прелоадер из DOM совсем
                 setTimeout(function() {
                     preloader.style.display = 'none';
-                }, 300); // Ждем пока пройдет анимация opacity
-            }, 500); // Минимальное время показа лоадера (чтобы не моргал слишком быстро)
-        };
+                }, 300);
+            });
+        });
     </script>
 </body>
 </html>
