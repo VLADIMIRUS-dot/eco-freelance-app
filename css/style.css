@@ -1,5 +1,23 @@
 /* css/style.css */
+/* === АНТИ-МЕРЦАНИЕ === */
+body {
+    /* Изначально фон прозрачный или совпадает с темой (задается через JS) */
+    margin: 0;
+    padding: 0;
+    /* Скрываем контент до полной инициализации */
+}
 
+#app-wrapper {
+    opacity: 0;
+    transition: opacity 0.2s ease-in-out;
+    visibility: hidden; /* Чтобы нельзя было кликнуть, пока не прогрузится */
+}
+
+/* Когда JS добавит этот класс, приложение плавно появится */
+body.app-loaded #app-wrapper {
+    opacity: 1;
+    visibility: visible;
+}
 /* ===========================
    1. ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ И СБРОС
    =========================== */
@@ -1002,3 +1020,4 @@ input[type=range] {
     border-color: var(--tg-theme-text-color);
     transform: scale(1.1);
 }
+
