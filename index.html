@@ -20,13 +20,9 @@
     <!-- Иконки (FontAwesome) -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-	<!-- Автоматическая загрузка свежих стилей -->
-    <script>
-        var APP_VERSION = "1.0"; 
-        
-        document.write('<link rel="stylesheet" href="css/style.css?v=' + APP_VERSION + '">');
-        document.write('<link rel="stylesheet" href="css/desktop.css?v=' + APP_VERSION + '">');
-    </script>
+    <!-- СТИЛИ: Подключены напрямую для устранения мерцания -->
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/desktop.css">
 </head>
 <body>
 
@@ -45,86 +41,19 @@
 
             <!-- ==============================
                  ЭКРАН 1: ПРОФИЛЬ (ГЛАВНАЯ)
-                 Рендеринг: js/views.js -> renderProfileView()
-                 Данные: js/data.js -> engineerProfile
+                 Содержимое генерируется в js/views.js -> renderProfileView()
             =============================== -->
             <section id="view-profile" class="view active">
-                <header class="profile-header">
-                    <div class="profile-card">
-                        <!-- onerror важен, если локальная картинка не прогрузится -->
-                        <img src="images/avatar.jpg" alt="Avatar" class="avatar" onerror="this.src='https://via.placeholder.com/100'">
-                        <div class="profile-info">
-                            <h1 id="profile-name">Загрузка...</h1>
-                            <p class="role">Инженер-эколог / Разработчик</p>
-                            <!-- Теги (заполняются через JS) -->
-                            <div class="tags"></div>
-                        </div>
-                    </div>
-                </header>
-
-                <!-- Статус загрузки (Workload) -->
-                <div class="status-section">
-                    <h3>Моя загрузка</h3>
-                    <div class="workload-container">
-                        <!-- JS меняет width и color -->
-                        <div class="workload-bar">
-                            <div class="workload-fill" id="workload-fill" style="width: 0%;"></div>
-                        </div>
-                        <p id="workload-text" class="status-text">Загрузка данных...</p>
-                    </div>
-                </div>
-
-                <!-- География (Анимация пузырей) -->
-                <div class="geo-section">
-                    <div class="geo-header">
-                        <h3>География работ</h3>
-                    </div>
-                    <!-- Контейнер для пузырей (js/views.js) -->
-                    <div id="bubbles-cloud" class="bubbles-container"></div>
-                </div>
-                
-                <!-- Меню действий -->
-                <div class="action-buttons">
-                    <!-- Прямой вызов window.open допустим для простых ссылок -->
-                    <button class="btn btn-primary" onclick="window.open('https://t.me/EcoSubcontract')">
-                        <i class="fa-brands fa-telegram"></i> Написать мне
-                    </button>
-                    <button class="btn btn-outline">
-                        <i class="fa-solid fa-file-pdf"></i> Скачать Резюме
-                    </button>
-                    
-                    <div class="menu-list">
-                        <!-- Реквизиты: логика клика вешается в js/views.js (renderProfileView) -->
-                        <div class="menu-item" id="btn-requisites">
-                            <div class="menu-icon-box" style="background: rgba(36, 129, 204, 0.1); color: #2481cc;">
-                                <i class="fa-solid fa-file-contract"></i>
-                            </div>
-                            <div class="menu-text">
-                                <span>Реквизиты и Договор</span>
-                                <small>Скачать шаблоны</small>
-                            </div>
-                            <i class="fa-solid fa-chevron-right arrow-icon"></i>
-                        </div>
-                        
-                        <!-- Сертификаты: простая заглушка -->
-                        <div class="menu-item" onclick="alert('Тут будут сканы сертификатов')">
-                            <div class="menu-icon-box" style="background: rgba(46, 204, 113, 0.1); color: #2ecc71;">
-                                <i class="fa-solid fa-certificate"></i>
-                            </div>
-                            <div class="menu-text">
-                                <span>Сертификаты</span>
-                                <small>Лицензии и допуски</small>
-                            </div>
-                            <i class="fa-solid fa-chevron-right arrow-icon"></i>
-                        </div>
-                    </div>
-                </div>
+                <!-- Сюда JS вставит:
+                     - Аватар и инфо
+                     - Шкалу загрузки (с карандашом для админа)
+                     - Облако пузырей
+                     - Кнопки: "Написать мне", "Заказать разработку", "Резюме"
+                -->
             </section>
 
             <!-- ==============================
                  ЭКРАН 2: ПРОЕКТЫ
-                 Рендеринг: js/views.js -> renderProjectsView()
-                 Логика: Фильтрация в js/logic.js
             =============================== -->
             <section id="view-projects" class="view">
                 <div class="section-header">
@@ -148,15 +77,14 @@
 
             <!-- ==============================
                  ЭКРАН 3: УСЛУГИ И КАЛЬКУЛЯТОР
-                 Логика: js/logic.js -> setupCalculatorLogic()
             =============================== -->
             <section id="view-services" class="view">
 
                 <!-- Табы внутри экрана (Быстрый / Смета) -->
-                <!-- Функции switchCalcMode глобально доступны из logic.js -->
+                <!-- ВАЖНО: добавлен 'this' в аргументы для поддержки iOS -->
                 <div class="calc-mode-switch">
-                    <button class="mode-btn active" onclick="switchCalcMode('simple')">Быстрый</button>
-                    <button class="mode-btn" onclick="switchCalcMode('advanced')">Смета (КП)</button>
+                    <button class="mode-btn active" onclick="switchCalcMode('simple', this)">Быстрый</button>
+                    <button class="mode-btn" onclick="switchCalcMode('advanced', this)">Смета (КП)</button>
                 </div>
 
                 <!-- РЕЖИМ 1: БЫСТРЫЙ -->
@@ -231,7 +159,6 @@
 
             <!-- ==============================
                  ЭКРАН 4: ПАРТНЕРЫ (АДМИНКА)
-                 Виден только если logic.js определил isAdmin = true
             =============================== -->
             <section id="view-partners" class="view admin-only hidden">
                 <div class="section-header">
@@ -252,11 +179,11 @@
                 <div id="partners-list" class="partners-list"></div>
             </section>
 
-			<!-- ==============================
-                 ЭКРАН 5: ПРОФИЛЬ КЛИЕНТА (ВВОД РЕКВИЗИТОВ)
-                 Логика: js/logic.js -> savePartnerProfile()
+            <!-- ==============================
+                 ЭКРАН 5: ПРОФИЛЬ КЛИЕНТА
             =============================== -->
-			<section id="view-partner" class="view">
+            <section id="view-partner" class="view">
+                <!-- СОСТОЯНИЕ 1: РЕГИСТРАЦИЯ -->
                 <div id="partner-auth" class="modal-content partner-form-content hidden" style="box-shadow: none; padding-top: 40px;">
                     <div class="partner-header">
                         <i class="fa-solid fa-handshake"></i>
@@ -291,7 +218,7 @@
                     </form>
                 </div>
 
-                <!-- СОСТОЯНИЕ 2: ЛИЧНЫЙ КАБИНЕТ (Виден, если данные есть) -->
+                <!-- СОСТОЯНИЕ 2: ЛИЧНЫЙ КАБИНЕТ -->
                 <div id="partner-dashboard" class="hidden">
                     <!-- Шапка кабинета -->
                     <div class="lk-header">
@@ -307,7 +234,7 @@
                         </button>
                     </div>
 
-                    <!-- Карточка лояльности (Полезная информация) -->
+                    <!-- Карточка лояльности -->
                     <div class="loyalty-card">
                         <div class="loyalty-row">
                             <span>Ваш статус:</span>
@@ -364,27 +291,58 @@
                         <i class="fa-solid fa-arrow-right-from-bracket"></i> Выйти из профиля
                     </button>
                 </div>
-
             </section>
 
         </main> <!-- Конец #main-content -->
 
         <!-- ==============================
-             МОДАЛЬНОЕ ОКНО (ДЕТАЛИ ПРОЕКТА)
-             Вынесено из Main, чтобы перекрывать весь интерфейс
+             МОДАЛЬНОЕ ОКНО 1: ДЕТАЛИ ПРОЕКТА
         =============================== -->
         <div id="project-detail-modal" class="modal hidden">
             <div class="modal-content">
                 <span class="close-modal">&times;</span>
                 <div id="modal-body">
-                    <!-- Заполняется в js/views.js -> fillAndShowModal() -->
+                    <!-- Заполняется в js/views.js -->
                 </div>
             </div>
         </div>
 
         <!-- ==============================
+             МОДАЛЬНОЕ ОКНО 2: РЕДАКТОР СТАТУСА (ДЛЯ АДМИНА)
+             Логика: js/logic.js -> saveNewStatus()
+        =============================== -->
+        <div id="status-edit-modal" class="modal hidden">
+            <div class="modal-content">
+                <span class="close-modal" onclick="closeStatusModal()">&times;</span>
+                <h3>Редактор загрузки</h3>
+                
+                <div class="form-group">
+                    <label>Процент загрузки: <span id="edit-percent-val">0</span>%</label>
+                    <input type="range" id="edit-percent" min="0" max="100" step="5">
+                </div>
+
+                <div class="form-group">
+                    <label>Текст статуса</label>
+                    <input type="text" id="edit-status-text" placeholder="Например: Свободен">
+                </div>
+
+                <div class="form-group">
+                    <label>Цвет индикатора</label>
+                    <div class="color-picker-row">
+                        <div class="color-circle" style="background:#2ecc71" onclick="selectStatusColor('#2ecc71')"></div> <!-- Зеленый -->
+                        <div class="color-circle" style="background:#f1c40f" onclick="selectStatusColor('#f1c40f')"></div> <!-- Желтый -->
+                        <div class="color-circle" style="background:#e74c3c" onclick="selectStatusColor('#e74c3c')"></div> <!-- Красный -->
+                        <div class="color-circle" style="background:#3498db" onclick="selectStatusColor('#3498db')"></div> <!-- Синий -->
+                    </div>
+                    <input type="hidden" id="edit-status-color">
+                </div>
+
+                <button class="btn btn-primary full-width" onclick="saveNewStatus()">Сохранить статус</button>
+            </div>
+        </div>
+
+        <!-- ==============================
              НИЖНЯЯ НАВИГАЦИЯ (TAB BAR)
-             Логика: js/logic.js -> setupNavigation()
         =============================== -->
         <nav class="bottom-nav">
             <div class="nav-item active" data-target="view-profile">
@@ -399,10 +357,10 @@
                 <i class="fa-solid fa-calculator"></i>
                 <span>Расчет</span>
             </div>
-			<div class="nav-item" data-target="view-partner">
-				<i class="fa-solid fa-building"></i>
-				<span>Мой профиль</span>
-			</div>
+            <div class="nav-item" data-target="view-partner">
+                <i class="fa-solid fa-building"></i>
+                <span>Мой профиль</span>
+            </div>
             <!-- Скрытая вкладка Админа -->
             <div class="nav-item admin-only hidden" id="nav-partners" data-target="view-partners">
                 <i class="fa-solid fa-gem"></i>
@@ -417,18 +375,9 @@
        Используем 'defer', чтобы скрипты грузились параллельно и 
        запускались только после полной загрузки HTML.
     -->
-	<!-- Автоматическая загрузка свежих скриптов -->
-    <script>
-        document.write('<script src="js/data.js?v=' + APP_VERSION + '" defer><\/script>');
-        document.write('<script src="js/views.js?v=' + APP_VERSION + '" defer><\/script>');
-        document.write('<script src="js/logic.js?v=' + APP_VERSION + '" defer><\/script>');
-    </script>
-
-    <!-- 
-       Внимание: Временный скрипт удален, так как 
-       initApp() и setupNavigation() уже есть в js/logic.js.
-       Это предотвращает двойное срабатывание событий.
-    -->
+    <script src="js/data.js" defer></script>
+    <script src="js/views.js" defer></script>
+    <script src="js/logic.js" defer></script>
 
 </body>
 </html>
