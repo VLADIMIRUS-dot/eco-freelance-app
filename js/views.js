@@ -50,7 +50,7 @@ function renderProfileView(profileData) {
             </div>
             <div class="workload-container">
                 <div class="workload-bar">
-                    <div class="workload-fill" style="width: ${profileData.workload.percent}%; background-color: ${profileData.workload.color};"></div>
+                    <div class="workload-fill" style="width: ${profileData.workload.percent}%; background: ${profileData.workload.color};"></div>
                 </div>
                 <p class="status-text">${profileData.workload.percent}% — ${profileData.workload.statusText}</p>
             </div>
@@ -380,3 +380,4 @@ function toggleAdminElementsView(show) {
     });
 
 }
+
