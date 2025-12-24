@@ -26,40 +26,19 @@ console.log(`[App] User: ${currentUserId}, Admin: ${isAdmin}`);
 
 
 // === 2. ИНИЦИАЛИЗАЦИЯ ===
-// === 2. ИНИЦИАЛИЗАЦИЯ ===
 document.addEventListener('DOMContentLoaded', () => {
     try {
-        // 1. Сообщаем Телеграму, что мы готовы
         tg.ready();
         tg.expand(); 
-
-        // 2. ЖЕСТКО КРАСИМ ФОН (Анти-мерцание)
-        // Берем цвет фона прямо из параметров Телеграма
-        // Если их нет (браузер), ставим дефолтный
-        const bgColor = tg.themeParams?.bg_color || '#ffffff';
-        document.body.style.backgroundColor = bgColor;
         
-        // Красим хедер самого Телеграма
-        if(tg.setHeaderColor) tg.setHeaderColor(bgColor);
-        if(tg.setBackgroundColor) tg.setBackgroundColor(bgColor);
-
-        // 3. Запускаем логику приложения
         initTheme();
         initNavigation();
         initViews();
         checkFirstVisit();
         
-        // 4. ПЛАВНО ПОКАЗЫВАЕМ ПРИЛОЖЕНИЕ
-        // Небольшая задержка, чтобы браузер успел отрисовать фон
-        requestAnimationFrame(() => {
-            document.body.classList.add('app-loaded');
-        });
-        
         console.log("[App] Инициализация прошла успешно");
     } catch (e) {
         console.error("[App] Ошибка инициализации:", e);
-        // В случае ошибки все равно показываем приложение, чтобы не было белого экрана
-        document.body.classList.add('app-loaded');
     }
 });
 
@@ -625,91 +604,3 @@ window.deletePartner = function(id) {
         }
     }
 };
-// === 6. НОВЫЙ ФУНКЦИОНАЛ ===
-
-// 1. Переход в калькулятор (CTA кнопка)
-window.goToCalculator = function() {
-    // Ищем кнопку таба
-    const calcTab = document.querySelector('.nav-item[data-target="view-services"]');
-    if (calcTab) {
-        calcTab.click(); // Эмулируем клик по табу
-        
-        // Скроллим к началу калькулятора
-        setTimeout(() => {
-            const calcBlock = document.getElementById('calc-simple-mode');
-            if (calcBlock) calcBlock.scrollIntoView({ behavior: 'smooth' });
-        }, 300);
-    }
-};
-
-// 2. Логика Редактора статуса (Админ)
-window.openStatusEditor = function() {
-    const modal = document.getElementById('status-edit-modal');
-    const slider = document.getElementById('edit-percent');
-    const textInput = document.getElementById('edit-status-text');
-    const valSpan = document.getElementById('edit-percent-val');
-    
-    // Подгружаем текущие данные (с учетом локальных изменений)
-    const current = engineerProfile.workload;
-    
-    slider.value = current.percent;
-    valSpan.textContent = current.percent;
-    textInput.value = current.statusText;
-    document.getElementById('edit-status-color').value = current.color;
-    
-    // Выделяем активный цвет
-    document.querySelectorAll('.color-circle').forEach(c => {
-        c.classList.toggle('active', c.getAttribute('style').includes(current.color));
-    });
-
-    // Живое обновление цифры при свайпе
-    slider.oninput = function() { valSpan.textContent = this.value; };
-
-    modal.classList.remove('hidden');
-};
-
-window.closeStatusModal = function() {
-    document.getElementById('status-edit-modal').classList.add('hidden');
-};
-
-window.selectStatusColor = function(color) {
-    document.getElementById('edit-status-color').value = color;
-    // Визуальное выделение
-    document.querySelectorAll('.color-circle').forEach(c => c.classList.remove('active'));
-    // Ищем круг с таким же цветом (грубый поиск)
-    const circles = document.querySelectorAll('.color-circle');
-    circles.forEach(c => {
-        if(c.getAttribute('style').includes(color)) c.classList.add('active');
-    });
-};
-
-window.saveNewStatus = function() {
-    const percent = parseInt(document.getElementById('edit-percent').value);
-    const text = document.getElementById('edit-status-text').value;
-    const color = document.getElementById('edit-status-color').value || '#2ecc71';
-
-    const newStatus = {
-        percent: percent,
-        statusText: text,
-        color: color
-    };
-
-    // 1. Сохраняем в память (чтобы работало прямо сейчас)
-    engineerProfile.workload = newStatus;
-    
-    // 2. Сохраняем в LocalStorage (чтобы сохранилось после перезагрузки У ВАС)
-    localStorage.setItem('admin_custom_status', JSON.stringify(newStatus));
-
-    // 3. Перерисовываем профиль
-    renderProfileView(engineerProfile);
-    
-    // Если мы админ, нужно снова показать скрытые элементы (карандашик),
-    // так как renderProfileView перерисовал HTML начисто.
-    if(isAdmin) toggleAdminElementsView(true);
-
-    closeStatusModal();
-    
-    // Выводим алерт с JSON, чтобы вы могли скопировать в data.js
-    alert("Статус обновлен (Локально)!\n\nЧтобы клиенты увидели это изменение, скопируйте объект ниже в data.js:\n\n" + JSON.stringify(newStatus));
-};
-

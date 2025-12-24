@@ -14,91 +14,57 @@
  * @param {Object} profileData - Объект профиля из data.js
  */
 function renderProfileView(profileData) {
-    // 1. Применяем локальные изменения статуса (если админ редактировал)
-    const savedStatus = localStorage.getItem('admin_custom_status');
-    if (savedStatus) {
-        try {
-            const parsed = JSON.parse(savedStatus);
-            profileData.workload = parsed; 
-        } catch(e) {}
+    // Безопасный поиск элементов
+    const nameEl = document.getElementById('profile-name');
+    const roleEl = document.querySelector('.role');
+    const avatarEl = document.querySelector('.avatar');
+
+    if (nameEl) nameEl.textContent = profileData.name;
+    if (roleEl) roleEl.textContent = profileData.title;
+    if (avatarEl) avatarEl.src = profileData.avatar;
+
+    // --- Теги стека ---
+    const tagsContainer = document.querySelector('.tags');
+    if (tagsContainer && profileData.tags) {
+        // Быстрая генерация HTML через map
+        tagsContainer.innerHTML = profileData.tags
+            .map(tag => `<span class="tag">${tag}</span>`)
+            .join('');
     }
 
-    const container = document.getElementById('view-profile');
-    if (!container) return;
+    // --- Шкала загрузки ---
+    const bar = document.getElementById('workload-fill');
+    const text = document.getElementById('workload-text');
+    if (bar && text) {
+        bar.style.width = `${profileData.workload.percent}%`;
+        bar.style.backgroundColor = profileData.workload.color;
+        text.textContent = `${profileData.workload.percent}% — ${profileData.workload.statusText}`;
+    }
     
-    // Иконка карандаша (видна только если есть класс admin-only)
-    const editBtnHTML = `<i class="fa-solid fa-pen-to-square admin-only edit-status-icon" onclick="openStatusEditor()"></i>`;
+    // --- Кнопка "Реквизиты" ---
+    // Используем клонирование, чтобы сбросить старые обработчики событий при повторном рендере
+    const reqBtn = document.getElementById('btn-requisites');
+    if (reqBtn) {
+        const newReqBtn = reqBtn.cloneNode(true);
+        reqBtn.parentNode.replaceChild(newReqBtn, reqBtn);
 
-    container.innerHTML = `
-        <header class="profile-header">
-            <div class="profile-card">
-                <img src="${profileData.avatar}" alt="Avatar" class="avatar" onerror="this.src='${CONFIG.PLACEHOLDER_AVATAR}'">
-                <div class="profile-info">
-                    <h1 id="profile-name">${profileData.name}</h1>
-                    <p class="role">${profileData.title}</p>
-                    <div class="tags">
-                        ${profileData.tags.map(tag => `<span class="tag">${tag}</span>`).join('')}
-                    </div>
-                </div>
-            </div>
-        </header>
-
-        <!-- БЛОК ЗАГРУЗКИ -->
-        <div class="status-section">
-            <div style="display:flex; justify-content:space-between; align-items:center;">
-                <h3>Моя загрузка ${editBtnHTML}</h3>
-            </div>
-            <div class="workload-container">
-                <div class="workload-bar">
-                    <div class="workload-fill" style="width: ${profileData.workload.percent}%; background-color: ${profileData.workload.color};"></div>
-                </div>
-                <p class="status-text">${profileData.workload.percent}% — ${profileData.workload.statusText}</p>
-            </div>
-        </div>
-
-        <!-- ГЕОГРАФИЯ -->
-        <div class="geo-section">
-            <div class="geo-header">
-                <h3>География работ</h3>
-            </div>
-            <div id="bubbles-cloud" class="bubbles-container"></div>
-        </div>
-        
-        <!-- КНОПКИ ДЕЙСТВИЙ -->
-        <div class="action-buttons">
-            <!-- 1. Написать мне (Телеграм) -->
-            <button class="btn btn-primary" onclick="window.open('${CONFIG.TELEGRAM_LINK}')">
-                <i class="fa-brands fa-telegram"></i> Написать мне
-            </button>
+        newReqBtn.addEventListener('click', () => {
+            // В реальном проекте здесь лучше открывать Telegram WebApp Popup
+            const docList = profileData.documents.map(d => `📄 ${d.title}`).join('\n');
             
-            <!-- 2. НОВАЯ КНОПКА: Заказать (Калькулятор) -->
-            <!-- Используем тот же стиль btn-primary, но другую иконку -->
-            <button class="btn btn-primary" onclick="goToCalculator()">
-                <i class="fa-solid fa-calculator"></i> Заказать разработку
-            </button>
+            if (window.Telegram?.WebApp?.showPopup) {
+                window.Telegram.WebApp.showPopup({
+                    title: 'Документы',
+                    message: docList,
+                    buttons: [{type: 'ok'}]
+                });
+            } else {
+                alert(`Ваши документы:\n\n${docList}`);
+            }
+        });
+    }
 
-            <!-- 3. Резюме (Оставим outline, чтобы не было "светофора" из 3 залитых кнопок) -->
-            <button class="btn btn-outline">
-                <i class="fa-solid fa-file-pdf"></i> Скачать Резюме
-            </button>
-            
-            <div class="menu-list">
-                ${profileData.documents.map(doc => `
-                    <div class="menu-item" onclick="alert('Открываем документ: ${doc.title}')">
-                        <div class="menu-icon-box" style="background: rgba(36, 129, 204, 0.1); color: #2481cc;">
-                             <i class="fa-solid fa-file-contract"></i>
-                        </div>
-                        <div class="menu-text">
-                            <span>${doc.title}</span>
-                            <small>Посмотреть документ</small>
-                        </div>
-                        <i class="fa-solid fa-chevron-right arrow-icon"></i>
-                    </div>
-                `).join('')}
-            </div>
-        </div>
-    `;
-
+    // --- География (Пузыри) ---
     renderGeoBubbles(profileData.geo.regions);
 }
 
@@ -378,6 +344,4 @@ function toggleAdminElementsView(show) {
         if (show) el.classList.remove('hidden');
         else el.classList.add('hidden');
     });
-
 }
-
