@@ -23,6 +23,21 @@
     <!-- СТИЛИ: Подключены напрямую для устранения мерцания -->
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/desktop.css">
+        <!-- АНТИ-МЕРЦАНИЕ (INLINE SCRIPT) -->
+    <script>
+        // Пытаемся покрасить фон еще до загрузки всего остального
+        try {
+            // Telegram передает параметры темы через URL хэш или window.Telegram
+            // Этот код сработает быстрее, чем logic.js
+            var tgData = window.Telegram.WebApp;
+            if (tgData) {
+                tgData.ready();
+                var bg = tgData.themeParams.bg_color || '#ffffff';
+                document.documentElement.style.backgroundColor = bg;
+                document.body.style.backgroundColor = bg;
+            }
+        } catch(e) {}
+    </script>
 </head>
 <body>
 
@@ -381,3 +396,4 @@
 
 </body>
 </html>
+
