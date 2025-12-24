@@ -1,5 +1,4 @@
 // js/logic.js
-
 // === 0. ПРОВЕРКА ЗАГРУЗКИ DATA.JS ===
 if (typeof CONFIG === 'undefined' || typeof servicesData === 'undefined') {
     console.error("CRITICAL ERROR: data.js не загружен!");
@@ -442,4 +441,91 @@ window.deletePartner = function(id) {
         const index = partnersData.findIndex(p => p.id === id);
         if (index !== -1) { partnersData.splice(index, 1); renderPartnersView(partnersData); }
     }
+};
+// ==========================================
+// === CRM 2.0 LOGIC ===
+// ==========================================
+
+// Глобальные переменные для фильтра
+let crmSearchQuery = "";
+let crmFilterStatus = "all"; // all, debt, active, lead
+
+// 1. Инициализация CRM (вызывается из initViews)
+function initCRM() {
+    renderModernCRM();
+}
+
+// 2. Функция фильтрации и рендера
+function renderModernCRM() {
+    const container = document.getElementById('partners-list');
+    if (!container) return;
+
+    // Фильтрация
+    let filtered = partnersData.filter(p => {
+        // Поиск по имени или ИНН
+        const matchSearch = p.name.toLowerCase().includes(crmSearchQuery) || 
+                            p.inn.includes(crmSearchQuery);
+        
+        // Фильтр по статусу (табы)
+        let matchFilter = true;
+        if (crmFilterStatus === 'debt') matchFilter = p.finance.debt > 0;
+        if (crmFilterStatus === 'active') matchFilter = p.status === 'active';
+        if (crmFilterStatus === 'lead') matchFilter = p.status === 'lead';
+        
+        return matchSearch && matchFilter;
+    });
+
+    // Считаем общие цифры для дашборда
+    let totalDebt = 0;
+    let totalPotential = 0; // Долг + Остаток к оплате
+    partnersData.forEach(p => {
+        totalDebt += p.finance.debt;
+        totalPotential += (p.finance.total - p.finance.paid);
+    });
+
+    // Обновляем HTML
+    renderCRMHTML(container, filtered, totalDebt, totalPotential);
+}
+
+// 3. Переключение фильтров (Tabs)
+window.setCRMFilter = function(filterType, btn) {
+    crmFilterStatus = filterType;
+    
+    // Визуальное переключение кнопок
+    document.querySelectorAll('.crm-chip').forEach(c => c.classList.remove('active'));
+    if(btn) btn.classList.add('active');
+    
+    renderModernCRM();
+    if(tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
+};
+
+// 4. Поиск
+window.onCRMSearch = function(val) {
+    crmSearchQuery = val.toLowerCase().trim();
+    renderModernCRM();
+};
+
+// 5. Раскрыть/Скрыть детали
+window.toggleCRMDetails = function(id) {
+    const detailsBlock = document.getElementById(`crm-details-${id}`);
+    const arrow = document.getElementById(`crm-arrow-${id}`);
+    
+    if (detailsBlock) {
+        const isOpen = detailsBlock.classList.contains('open');
+        if (isOpen) {
+            detailsBlock.classList.remove('open');
+            arrow.style.transform = 'rotate(0deg)';
+        } else {
+            detailsBlock.classList.add('open');
+            arrow.style.transform = 'rotate(180deg)';
+        }
+    }
+};
+
+// 6. Скопировать ИНН
+window.copyINN = function(inn) {
+    navigator.clipboard.writeText(inn).then(() => {
+        if(tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+        alert("ИНН скопирован: " + inn); // В WebApp лучше использовать кастомный тост, но alert сойдет
+    });
 };
