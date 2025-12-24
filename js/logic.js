@@ -603,4 +603,15 @@ window.deletePartner = function(id) {
             renderPartnersView(partnersData);
         }
     }
+
+};
+window.goToCalculator = function() {
+    const calcTab = document.querySelector('.nav-item[data-target="view-services"]');
+    if (calcTab) {
+        calcTab.click(); 
+        setTimeout(() => {
+            const calcBlock = document.getElementById('calc-simple-mode');
+            if (calcBlock) calcBlock.scrollIntoView({ behavior: 'smooth' });
+        }, 300);
+    }
 };
