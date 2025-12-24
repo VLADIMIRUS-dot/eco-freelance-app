@@ -120,46 +120,80 @@ const projectsData = [
 const partnersData = [
     {
         id: 1,
-        name: "ООО 'Завод Металл'",
-        inn: "7712345678",
-        contact: "Иван Петрович (ГИП)",
-        email: "gip@zavod.ru",
-        username: "ivan_gip", // Telegram username (без @)
+        name: "ООО 'Северный Металл'",
+        inn: "7712000001",
+        contact: "Сергей (ГИП)",
+        username: "sergey_gip", // Telegram
+        phone: "+79001112233",
+        email: "gip@sever-met.ru",
         
-        // Админские данные
-        rating: 5, // 1-5
-        note: "Платят четко. Любят звонить утром. Договор №45-23.",
-        status: "active", // active, ban
+        status: "active", // active, lead, debt, archive
+        contract: "№45-23 от 10.01.23",
         
-        // Финансы (для дашборда)
-        finances: { debt: 0, wait: 15000 } 
+        // Проекты клиента
+        projects: [
+            { type: "НДВ", stage: "Экспертиза", deadline: "20.12" },
+            { type: "ПЭК", stage: "Сдача", deadline: "01.12" }
+        ],
+
+        // Деньги
+        finance: {
+            total: 150000,
+            paid: 100000,
+            debt: 50000 // Долг!
+        },
+        
+        rating: 5,
+        note: "Хорошие ребята, но бухгалтерия долго проводит счета."
     },
     {
         id: 2,
-        name: "ИП Неплательщик О.А.",
-        inn: "540000000012",
-        contact: "Менеджер Олег",
-        email: "oleg@mail.ru",
-        username: "", // Нет телеграма
+        name: "ИП Строитель В.В.",
+        inn: "540011122233",
+        contact: "Виктор",
+        username: "",
+        phone: "+79998887766",
+        email: "stroy@mail.ru",
         
-        rating: 1,
-        note: "Тянут с оплатой. Требуют скидки. Больше не работать без 100% предоплаты!",
-        status: "bad",
+        status: "lead", // Лид (потенциальный)
+        contract: "На согласовании",
         
-        finances: { debt: 25000, wait: 0 }
+        projects: [
+            { type: "СЗЗ", stage: "Расчет", deadline: "—" }
+        ],
+
+        finance: {
+            total: 45000,
+            paid: 0,
+            debt: 0
+        },
+        
+        rating: 3,
+        note: "Торгуется за каждую копейку. Предоплату не внес."
     },
     {
         id: 3,
-        name: "АО 'СтройТрест'",
-        inn: "7700009999",
-        contact: "Анна (Секретарь)",
-        email: "info@stroy.com",
-        username: "anna_stroy",
+        name: "АО 'НефтеХимТранс'",
+        inn: "7700999888",
+        contact: "Анна (Эколог)",
+        username: "anna_eco",
+        phone: "",
+        email: "eco@nht.ru",
         
-        rating: 4,
-        note: "Новый клиент. Пока присматриваемся.",
-        status: "new",
+        status: "active",
+        contract: "№12-24 БЕЗРОЧНЫЙ",
         
-        finances: { debt: 0, wait: 0 }
+        projects: [
+            { type: "Отчетность", stage: "Сбор данных", deadline: "15.01" }
+        ],
+
+        finance: {
+            total: 15000,
+            paid: 15000,
+            debt: 0
+        },
+        
+        rating: 5,
+        note: "Платят четко. Любят звонить в 9 утра."
     }
 ];
