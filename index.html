@@ -2,382 +2,174 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <!-- 
-       VIEWPORT:
-       user-scalable=no, maximum-scale=1.0 — критически важно для ощущения "Native App"
-       на мобильных устройствах, чтобы убрать зум по двойному тапу.
-    -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>EcoFreelance App</title>
-
-    <!-- PRECONNECT: Ускоряем установку соединения с внешними ресурсами -->
     <link rel="preconnect" href="https://telegram.org">
-    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
-
-    <!-- Telegram WebApp SDK -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-
-    <!-- Иконки (FontAwesome) -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-
-    <!-- СТИЛИ: Подключены напрямую для устранения мерцания -->
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/desktop.css">
 </head>
 <body>
-
-    <!-- 
-       #app-wrapper: 
-       Ограничивает ширину приложения на ПК (см. desktop.css), 
-       симулируя мобильный экран.
-    -->
     <div id="app-wrapper">
-
-        <!-- 
-           #main-content: 
-           Область скролла. Высота рассчитывается так, чтобы не перекрывать bottom-nav.
-        -->
         <main id="main-content">
 
-            <!-- ==============================
-                 ЭКРАН 1: ПРОФИЛЬ (ГЛАВНАЯ)
-                 Содержимое генерируется в js/views.js -> renderProfileView()
-            =============================== -->
-            <section id="view-profile" class="view active">
-                <!-- Сюда JS вставит:
-                     - Аватар и инфо
-                     - Шкалу загрузки (с карандашом для админа)
-                     - Облако пузырей
-                     - Кнопки: "Написать мне", "Заказать разработку", "Резюме"
-                -->
-            </section>
+            <!-- ЭКРАН 1: ПРОФИЛЬ -->
+            <section id="view-profile" class="view active"></section>
 
-            <!-- ==============================
-                 ЭКРАН 2: ПРОЕКТЫ
-            =============================== -->
+            <!-- ЭКРАН 2: ПРОЕКТЫ -->
             <section id="view-projects" class="view">
                 <div class="section-header">
                     <h2>Проекты</h2>
-                    <!-- Класс admin-only скрывает блок через CSS, если пользователь не админ -->
                     <div class="filters admin-only hidden">
                         <span class="filter-chip active">Все</span>
                         <span class="filter-chip">Должники</span>
                         <span class="filter-chip">В работе</span>
                     </div>
                 </div>
-                
-                <!-- Контейнер списка проектов -->
-                <div id="projects-list" class="projects-container">
-                    <div class="empty-state">
-                        <i class="fa-solid fa-folder-open"></i>
-                        <p>Загрузка проектов...</p>
-                    </div>
-                </div>
+                <div id="projects-list" class="projects-container"></div>
             </section>
 
-            <!-- ==============================
-                 ЭКРАН 3: УСЛУГИ И КАЛЬКУЛЯТОР
-            =============================== -->
+            <!-- ЭКРАН 3: УСЛУГИ -->
             <section id="view-services" class="view">
-
-                <!-- Табы внутри экрана (Быстрый / Смета) -->
-                <!-- ВАЖНО: добавлен 'this' в аргументы для поддержки iOS -->
                 <div class="calc-mode-switch">
-                    <button class="mode-btn active" onclick="switchCalcMode('simple', this)">Быстрый</button>
-                    <button class="mode-btn" onclick="switchCalcMode('advanced', this)">Смета (КП)</button>
+                    <button class="mode-btn active" data-action="switch-calc-mode" data-mode="simple">Быстрый</button>
+                    <button class="mode-btn" data-action="switch-calc-mode" data-mode="advanced">Смета (КП)</button>
                 </div>
 
-                <!-- РЕЖИМ 1: БЫСТРЫЙ -->
+                <!-- Simple Mode -->
                 <div id="calc-simple-mode">
                     <div class="calculator-card">
                         <div class="form-group">
                             <label>Что проектируем?</label>
-                            <!-- Опции заполняются из js/data.js -->
                             <select id="calc-service-type"></select>
                         </div>
-
-                        <!-- Динамические инпуты (range, checkbox) -->
                         <div id="dynamic-calc-inputs"></div>
-
-                        <!-- Загрузка файлов -->
                         <div class="form-group">
-                            <label>Документы (ТЗ, Справки, Карты)</label>
-                            <div class="file-upload-area" id="file-drop-zone">
+                            <label>Документы (ТЗ, Справки)</label>
+                            <div class="file-upload-area" onclick="document.getElementById('calc-file-input').click()">
                                 <input type="file" id="calc-file-input" multiple hidden>
                                 <i class="fa-solid fa-cloud-arrow-up"></i>
-                                <span id="file-upload-text">Прикрепить файлы</span>
+                                <span>Прикрепить файлы</span>
                                 <small>PDF, DOCX, ZIP до 20 Мб</small>
                             </div>
                             <div id="file-list-display" class="file-list"></div>
                         </div>
-
-                        <!-- Результат -->
                         <div class="calc-result">
-                            <div class="price-box">
-                                <span>Ориентир:</span>
-                                <h3 id="calc-total-price">0 ₽</h3>
-                            </div>
-                            <div class="time-box">
-                                <span>Срок:</span>
-                                <strong id="calc-total-time">0 дней</strong>
-                            </div>
+                            <div class="price-box"><span>Ориентир:</span><h3 id="calc-total-price">0 ₽</h3></div>
+                            <div class="time-box"><span>Срок:</span><strong id="calc-total-time">0 дней</strong></div>
                         </div>
-                        
-                        <button class="btn btn-primary full-width" id="btn-order-calc">
-                            Обсудить расчет
-                        </button>
+                        <button class="btn btn-primary full-width" data-action="order-calc">Обсудить расчет</button>
                     </div>
-
-                    <!-- Текстовый список (для SEO и информации) -->
                     <div class="services-list">
                         <h3>Список услуг</h3>
                         <div id="services-container"></div>
                     </div>
                 </div>
 
-                <!-- РЕЖИМ 2: СМЕТА / КП -->
+                <!-- Advanced Mode -->
                 <div id="calc-advanced-mode" class="hidden">
-                    <div id="estimate-container">
-                        <!-- Карточки объектов генерируются тут -->
-                    </div>
-
-                    <button class="btn btn-outline full-width dashed-btn" onclick="addNewObjectToEstimate()">
-                        <i class="fa-solid fa-plus"></i> Добавить объект / Площадку
+                    <div id="estimate-container"></div>
+                    <button class="btn btn-outline full-width dashed-btn" data-action="add-est-obj">
+                        <i class="fa-solid fa-plus"></i> Добавить объект
                     </button>
-
                     <div class="estimate-footer">
-                        <div class="total-row">
-                            <span>Итого по смете:</span>
-                            <strong id="estimate-total-sum">0 ₽</strong>
-                        </div>
-                        <button class="btn btn-primary full-width" onclick="sendEstimateToTelegram()">
-                            📄 Получить КП в Telegram
-                        </button>
+                        <div class="total-row"><span>Итого по смете:</span><strong id="estimate-total-sum">0 ₽</strong></div>
+                        <button class="btn btn-primary full-width" data-action="send-estimate">📄 Получить КП в Telegram</button>
                     </div>
                 </div>
             </section>
 
-            <!-- ==============================
-                 ЭКРАН 4: ПАРТНЕРЫ (АДМИНКА)
-            =============================== -->
+            <!-- ЭКРАН 4: ПАРТНЕРЫ (АДМИН) -->
             <section id="view-partners" class="view admin-only hidden">
-                <div class="section-header">
-                    <h2>Партнеры (CRM)</h2>
-                </div>
-                
-                <div class="finance-dashboard">
-                    <div class="fin-card red">
-                        <span>Дебиторка</span>
-                        <strong id="fin-debt">0 ₽</strong>
-                    </div>
-                    <div class="fin-card green">
-                        <span>Ожидаю</span>
-                        <strong id="fin-wait">0 ₽</strong>
-                    </div>
-                </div>
-
+                <div class="section-header"><h2>Партнеры (CRM)</h2></div>
                 <div id="partners-list" class="partners-list"></div>
             </section>
 
-            <!-- ==============================
-                 ЭКРАН 5: ПРОФИЛЬ КЛИЕНТА
-            =============================== -->
+            <!-- ЭКРАН 5: ПРОФИЛЬ КЛИЕНТА -->
             <section id="view-partner" class="view">
-                <!-- СОСТОЯНИЕ 1: РЕГИСТРАЦИЯ -->
                 <div id="partner-auth" class="modal-content partner-form-content hidden" style="box-shadow: none; padding-top: 40px;">
                     <div class="partner-header">
                         <i class="fa-solid fa-handshake"></i>
                         <h2>Давайте познакомимся!</h2>
-                        <p>Заполните реквизиты, чтобы я мог автоматически формировать для вас Договоры и КП.</p>
+                        <p>Заполните реквизиты для автоматического формирования Договоров.</p>
                     </div>
-
-                    <form id="partner-form" onsubmit="event.preventDefault(); savePartnerProfile();">
-                        <div class="form-group">
-                            <label>Название организации / ИП</label>
-                            <input type="text" id="p-name" placeholder="ООО 'Ромашка'" required>
-                        </div>
-                
-                        <div class="form-group">
-                            <label>ИНН</label>
-                            <input type="tel" id="p-inn" placeholder="Введите ИНН" maxlength="12">
-                        </div>
-
-                        <div class="form-group">
-                            <label>Контактное лицо (Имя)</label>
-                            <input type="text" id="p-contact" placeholder="Иван Иванович">
-                        </div>
-
-                        <div class="form-group">
-                            <label>Email для документов</label>
-                            <input type="email" id="p-email" placeholder="buh@example.com">
-                        </div>
-
-                        <button type="submit" class="btn btn-primary full-width">
-                            Сохранить и Войти
-                        </button>
+                    <form id="partner-form" onsubmit="event.preventDefault();">
+                        <div class="form-group"><label>Название организации / ИП</label><input type="text" id="p-name" placeholder="ООО 'Ромашка'" required></div>
+                        <div class="form-group"><label>ИНН</label><input type="tel" id="p-inn" placeholder="Введите ИНН"></div>
+                        <div class="form-group"><label>Контактное лицо</label><input type="text" id="p-contact" placeholder="Иван Иванович"></div>
+                        <div class="form-group"><label>Email</label><input type="email" id="p-email" placeholder="buh@example.com"></div>
+                        <button type="submit" class="btn btn-primary full-width" data-action="partner-save">Сохранить и Войти</button>
                     </form>
                 </div>
 
-                <!-- СОСТОЯНИЕ 2: ЛИЧНЫЙ КАБИНЕТ -->
                 <div id="partner-dashboard" class="hidden">
-                    <!-- Шапка кабинета -->
                     <div class="lk-header">
-                        <div class="lk-avatar">
-                            <i class="fa-solid fa-building"></i>
-                        </div>
-                        <div class="lk-info">
-                            <h2 id="lk-company-name">Загрузка...</h2>
-                            <p id="lk-inn">ИНН: —</p>
-                        </div>
-                        <button class="btn-icon-only" onclick="togglePartnerEditMode(true)">
-                            <i class="fa-solid fa-pen"></i>
-                        </button>
+                        <div class="lk-avatar"><i class="fa-solid fa-building"></i></div>
+                        <div class="lk-info"><h2 id="lk-company-name">...</h2><p id="lk-inn">ИНН: —</p></div>
+                        <button class="btn-icon-only" data-action="partner-edit"><i class="fa-solid fa-pen"></i></button>
                     </div>
-
-                    <!-- Карточка лояльности -->
                     <div class="loyalty-card">
-                        <div class="loyalty-row">
-                            <span>Ваш статус:</span>
-                            <strong id="lk-status">Новый партнер</strong>
-                        </div>
-                        <div class="loyalty-row">
-                            <span>Персональная скидка:</span>
-                            <strong style="font-size: 1.2rem;">0%</strong>
-                        </div>
-                        <div class="loyalty-desc">
-                            Сделайте первый заказ, чтобы получить статус "Постоянный клиент" и скидку 5%.
-                        </div>
+                        <div class="loyalty-row"><span>Ваш статус:</span><strong id="lk-status">Новый партнер</strong></div>
+                        <div class="loyalty-desc">Сделайте первый заказ для статуса "Постоянный клиент".</div>
                     </div>
-
-                    <!-- Быстрые действия -->
                     <div class="menu-list" style="margin-top: 0;">
-                        <div class="menu-item" onclick="window.open('https://t.me/EcoSubcontract')">
-                            <div class="menu-icon-box" style="background: rgba(36, 129, 204, 0.1); color: #2481cc;">
-                                <i class="fa-solid fa-headset"></i>
-                            </div>
-                            <div class="menu-text">
-                                <span>Персональный менеджер</span>
-                                <small>Написать Владимиру</small>
-                            </div>
-                            <i class="fa-solid fa-chevron-right arrow-icon"></i>
-                        </div>
-                        
-                        <div class="menu-item" onclick="alert('Функция в разработке. Скоро здесь будут ваши акты.')">
-                            <div class="menu-icon-box" style="background: rgba(46, 204, 113, 0.1); color: #2ecc71;">
-                                <i class="fa-solid fa-file-invoice"></i>
-                            </div>
-                            <div class="menu-text">
-                                <span>Мои документы</span>
-                                <small>Акты и счета</small>
-                            </div>
+                        <div class="menu-item" data-action="contact-telegram">
+                            <div class="menu-icon-box" style="background: rgba(36, 129, 204, 0.1); color: #2481cc;"><i class="fa-solid fa-headset"></i></div>
+                            <div class="menu-text"><span>Персональный менеджер</span><small>Написать Владимиру</small></div>
                             <i class="fa-solid fa-chevron-right arrow-icon"></i>
                         </div>
                     </div>
-
-                    <!-- Техническая инфа -->
                     <div class="lk-details">
                         <h3>Реквизиты</h3>
-                        <div class="detail-row">
-                            <span>Контакт:</span>
-                            <span id="lk-contact">—</span>
-                        </div>
-                        <div class="detail-row">
-                            <span>Email:</span>
-                            <span id="lk-email">—</span>
-                        </div>
+                        <div class="detail-row"><span>Контакт:</span><span id="lk-contact">—</span></div>
+                        <div class="detail-row"><span>Email:</span><span id="lk-email">—</span></div>
                     </div>
-                    
-                    <button class="btn btn-outline full-width" onclick="logoutPartner()" style="border-color: var(--status-red); color: var(--status-red); margin-top: 20px;">
-                        <i class="fa-solid fa-arrow-right-from-bracket"></i> Выйти из профиля
+                    <button class="btn btn-outline full-width" data-action="partner-logout" style="border-color: var(--status-red); color: var(--status-red); margin-top: 20px;">
+                        <i class="fa-solid fa-arrow-right-from-bracket"></i> Выйти
                     </button>
                 </div>
             </section>
 
-        </main> <!-- Конец #main-content -->
+        </main>
 
-        <!-- ==============================
-             МОДАЛЬНОЕ ОКНО 1: ДЕТАЛИ ПРОЕКТА
-        =============================== -->
+        <!-- MODALS -->
         <div id="project-detail-modal" class="modal hidden">
             <div class="modal-content">
-                <span class="close-modal">&times;</span>
-                <div id="modal-body">
-                    <!-- Заполняется в js/views.js -->
-                </div>
+                <span class="close-modal" data-action="close-modal">&times;</span>
+                <div id="modal-body"></div>
             </div>
         </div>
 
-        <!-- ==============================
-             МОДАЛЬНОЕ ОКНО 2: РЕДАКТОР СТАТУСА (ДЛЯ АДМИНА)
-             Логика: js/logic.js -> saveNewStatus()
-        =============================== -->
         <div id="status-edit-modal" class="modal hidden">
             <div class="modal-content">
-                <span class="close-modal" onclick="closeStatusModal()">&times;</span>
+                <span class="close-modal" data-action="close-modal">&times;</span>
                 <h3>Редактор загрузки</h3>
-                
                 <div class="form-group">
-                    <label>Процент загрузки: <span id="edit-percent-val">0</span>%</label>
-                    <input type="range" id="edit-percent" min="0" max="100" step="5">
+                    <label>Процент: <span id="edit-percent-val">0</span>%</label>
+                    <input type="range" id="edit-percent" min="0" max="100" step="5" class="calc-input">
                 </div>
-
                 <div class="form-group">
                     <label>Текст статуса</label>
-                    <input type="text" id="edit-status-text" placeholder="Например: Свободен">
+                    <input type="text" id="edit-status-text">
                 </div>
-
-                <div class="form-group">
-                    <label>Цвет индикатора</label>
-                    <div class="color-picker-row">
-                        <div class="color-circle" style="background:#2ecc71" onclick="selectStatusColor('#2ecc71')"></div> <!-- Зеленый -->
-                        <div class="color-circle" style="background:#f1c40f" onclick="selectStatusColor('#f1c40f')"></div> <!-- Желтый -->
-                        <div class="color-circle" style="background:#e74c3c" onclick="selectStatusColor('#e74c3c')"></div> <!-- Красный -->
-                        <div class="color-circle" style="background:#3498db" onclick="selectStatusColor('#3498db')"></div> <!-- Синий -->
-                    </div>
-                    <input type="hidden" id="edit-status-color">
-                </div>
-
-                <button class="btn btn-primary full-width" onclick="saveNewStatus()">Сохранить статус</button>
+                <div class="color-picker-row"></div> <!-- Скрыт CSS-ом -->
+                <button class="btn btn-primary full-width" data-action="save-status">Сохранить</button>
             </div>
         </div>
 
-        <!-- ==============================
-             НИЖНЯЯ НАВИГАЦИЯ (TAB BAR)
-        =============================== -->
+        <!-- NAVIGATION -->
         <nav class="bottom-nav">
-            <div class="nav-item active" data-target="view-profile">
-                <i class="fa-solid fa-user"></i>
-                <span>Эколог</span>
-            </div>
-            <div class="nav-item" data-target="view-projects">
-                <i class="fa-solid fa-briefcase"></i>
-                <span>Проекты</span>
-            </div>
-            <div class="nav-item" data-target="view-services">
-                <i class="fa-solid fa-calculator"></i>
-                <span>Расчет</span>
-            </div>
-            <div class="nav-item" data-target="view-partner">
-                <i class="fa-solid fa-building"></i>
-                <span>Мой профиль</span>
-            </div>
-            <!-- Скрытая вкладка Админа -->
-            <div class="nav-item admin-only hidden" id="nav-partners" data-target="view-partners">
-                <i class="fa-solid fa-gem"></i>
-                <span>CRM</span>
-            </div>
+            <div class="nav-item active" data-target="view-profile"><i class="fa-solid fa-user"></i><span>Эколог</span></div>
+            <div class="nav-item" data-target="view-projects"><i class="fa-solid fa-briefcase"></i><span>Проекты</span></div>
+            <div class="nav-item" data-target="view-services"><i class="fa-solid fa-calculator"></i><span>Расчет</span></div>
+            <div class="nav-item" data-target="view-partner"><i class="fa-solid fa-building"></i><span>Профиль</span></div>
+            <div class="nav-item admin-only hidden" data-target="view-partners"><i class="fa-solid fa-gem"></i><span>CRM</span></div>
         </nav>
+    </div>
 
-    </div> <!-- Конец #app-wrapper -->
-
-    <!-- 
-       СКРИПТЫ
-       Используем 'defer', чтобы скрипты грузились параллельно и 
-       запускались только после полной загрузки HTML.
-    -->
     <script src="js/data.js" defer></script>
     <script src="js/views.js" defer></script>
     <script src="js/logic.js" defer></script>
-
 </body>
 </html>

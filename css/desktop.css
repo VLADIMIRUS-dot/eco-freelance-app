@@ -1,22 +1,26 @@
-/* css/desktop.css */
+/* ===========================
+   DESKTOP ADAPTATION
+   Симуляция мобильного устройства на ПК
+   =========================== */
 
 /* Правила применяются ТОЛЬКО если ширина экрана больше 768px (Планшеты/ПК) */
 @media (min-width: 768px) {
     
     body {
-        /* Делаем темный фон вокруг приложения на ПК */
+        /* Темный фон вокруг "телефона" */
         background-color: #212121; 
         display: flex;
         justify-content: center;
         align-items: center;
         min-height: 100vh;
+        margin: 0;
     }
 
     /* Контейнер-обертка приложения */
     #app-wrapper {
         width: 100%;
-        max-width: 420px; /* Ширина мобилки */
-        height: 90vh; /* Почти на всю высоту */
+        max-width: 420px; /* Стандартная ширина мобилки */
+        height: 90vh; /* Почти на всю высоту экрана */
         background-color: var(--tg-theme-bg-color);
         border-radius: 20px;
         box-shadow: 0 0 50px rgba(0,0,0,0.5);
@@ -27,7 +31,7 @@
 
     #main-content {
         height: 100%;
-        overflow-y: auto; /* Скроллится только контент внутри телефона */
+        overflow-y: auto; /* Скроллится только контент внутри "телефона" */
         /* Кастомный скроллбар */
         scrollbar-width: thin; 
     }
@@ -37,11 +41,18 @@
         position: absolute; 
         width: 100%;
         border-radius: 0 0 20px 20px;
+        /* Убираем отступ для Safe Area на ПК, так как его там нет */
+        padding-bottom: 0;
     }
 
-    /* Модальное окно не на весь экран, а внутри контейнера */
+    /* Модальное окно не на весь экран монитора, а внутри контейнера */
     .modal {
         position: absolute;
         border-radius: 20px;
+    }
+    
+    /* Корректировка высоты контента, чтобы не перекрывался навбаром */
+    #main-content {
+        padding-bottom: 80px;
     }
 }

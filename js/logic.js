@@ -1,672 +1,630 @@
-// js/logic.js
-// === 0. ПРОВЕРКА ЗАГРУЗКИ DATA.JS ===
-if (typeof CONFIG === 'undefined' || typeof servicesData === 'undefined') {
-    console.error("CRITICAL ERROR: data.js не загружен!");
-    alert("Ошибка: data.js не найден.");
+// === 0. ПРОВЕРКА ЗАВИСИМОСТЕЙ ===
+if (typeof Store === 'undefined' || typeof View === 'undefined') {
+    console.error("CRITICAL ERROR: Store or View not loaded!");
+    alert("Ошибка загрузки модулей.");
 }
 
 const tg = window.Telegram.WebApp;
 
-// === 1. ЛОГИКА АВТОРИЗАЦИИ ===
-let currentUserId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+/**
+ * ==============================================
+ * КОНТРОЛЛЕР (CONTROLLER)
+ * Связывает Данные (Store) и Отображение (View)
+ * Обрабатывает события пользователя
+ * ==============================================
+ */
+const Controller = {
+    // Внутреннее состояние контроллера (UI state)
+    uiState: {
+        activeTab: 'view-profile',
+        calcMode: 'simple', // simple | advanced
+        crmFilter: 'all',
+        crmSearch: '',
+        uploadedFiles: []
+    },
 
-// Для тестов в браузере (если нет ID, но включен режим админа в data.js)
-if (!currentUserId && typeof CONFIG.FORCE_ADMIN_MODE !== 'undefined' && CONFIG.FORCE_ADMIN_MODE) {
-    currentUserId = CONFIG.ADMIN_ID;
-}
-
-// ПРОВЕРКА НА АДМИНА (Нестрогое сравнение)
-const isAdmin = (currentUserId == CONFIG.ADMIN_ID); 
-let estimateData = []; 
-
-console.log(`[App] User: ${currentUserId}, Admin Access: ${isAdmin}`);
-
-// === 2. ИНИЦИАЛИЗАЦИЯ ===
-document.addEventListener('DOMContentLoaded', () => {
-    try {
+    init() {
+        // 1. Инициализация Telegram SDK
         tg.ready();
         tg.expand();
+        this.initTheme();
+
+        // 2. Инициализация Данных
+        const user = tg.initDataUnsafe?.user;
+        Store.init(user);
+
+        console.log(`[App] User: ${user?.id}, Admin: ${Store.state.isAdmin}`);
+
+        // 3. Первичный рендер
+        this.renderAll();
         
-        initTheme();
-        initNavigation();
-        initViews();
-        checkFirstVisit();
-        
-        // Показ элементов админа
-        if (typeof toggleAdminElementsView === 'function') {
-             toggleAdminElementsView(isAdmin);
+        // 4. Навешивание глобальных обработчиков событий (Delegation)
+        this.setupEventListeners();
+
+        // 5. Проверка первого входа (Партнерский профиль)
+        this.checkPartnerAuth();
+
+        // 6. Скрытие элементов админа, если не админ
+        if (!Store.state.isAdmin) {
+            document.querySelectorAll('.admin-only').forEach(el => el.classList.add('hidden'));
         }
-        
-        // Скрываем выбор цвета в модалке (он теперь автоматический)
-        const colorPicker = document.querySelector('.color-picker-row');
-        if (colorPicker) colorPicker.style.display = 'none';
+    },
 
-        console.log("[App] Ready");
-    } catch (e) {
-        console.error("[App] Init Error:", e);
-    }
-});
+    initTheme() {
+        const apply = () => {
+            if (tg.colorScheme) document.body.setAttribute('data-theme', tg.colorScheme);
+            if (tg.themeParams?.bg_color) {
+                tg.setHeaderColor(tg.themeParams.bg_color);
+                tg.setBackgroundColor(tg.themeParams.bg_color);
+            }
+        };
+        apply();
+        tg.onEvent('themeChanged', apply);
+    },
 
-/** Инициализация представлений */
-function initViews() {
-    if(typeof renderProfileView === 'function') {
-        renderProfileView(engineerProfile);
-        
-        // Фикс кнопки "Написать мне"
-        const contactBtn = document.querySelector('.action-buttons .btn-primary');
-        if (contactBtn) {
-            contactBtn.replaceWith(contactBtn.cloneNode(true));
-            document.querySelector('.action-buttons .btn-primary').addEventListener('click', () => {
-                const url = CONFIG.TELEGRAM_LINK;
-                if(tg.openTelegramLink) tg.openTelegramLink(url);
-                else window.open(url, '_blank');
-            });
+    // === RENDER METHODS ===
+    
+    renderAll() {
+        this.renderProfile();
+        this.renderProjects();
+        this.renderCalculator();
+        this.renderCRM();
+    },
+
+    renderProfile() {
+        const container = document.getElementById('view-profile');
+        if (!container) return;
+        container.innerHTML = View.renderProfile(Store.state.engineer, Store.state.isAdmin);
+        // Запуск анимации пузырей после вставки HTML
+        View.initBubblesAnimation('bubbles-cloud');
+    },
+
+    renderProjects() {
+        const container = document.getElementById('projects-list');
+        if (!container) return;
+        const projects = Store.getVisibleProjects();
+        container.innerHTML = View.renderProjectsList(projects);
+    },
+
+    renderCalculator() {
+        // 1. Опции селекта
+        const typeSelect = document.getElementById('calc-service-type');
+        if (typeSelect && typeSelect.options.length === 0) {
+            typeSelect.innerHTML = View.renderServicesOptions(Store.state.services);
+            // Триггерим рендер инпутов для первой услуги
+            this.updateCalcInputs();
         }
-    }
 
-    if(typeof renderProjectsView === 'function') {
-        const visibleProjects = isAdmin ? projectsData : projectsData.filter(p => p.ownerId == currentUserId);
-        renderProjectsView(visibleProjects);
-    }
-
-    if(typeof fillCalculatorOptions === 'function') {
-        fillCalculatorOptions(servicesData);
-        renderServicesListView(servicesData);
-        initSimpleCalculator();
-    }
-
-    if (typeof renderPartnersView === 'function') {
-        renderPartnersView(partnersData);
-    }
-}
-
-function initTheme() {
-    function applyTheme() {
-        if (tg.colorScheme) document.body.setAttribute('data-theme', tg.colorScheme);
-        if(tg.themeParams && tg.themeParams.bg_color) {
-            tg.setHeaderColor(tg.themeParams.bg_color);
-            tg.setBackgroundColor(tg.themeParams.bg_color);
+        // 2. Список услуг (текстовый)
+        const listContainer = document.getElementById('services-container');
+        if (listContainer) {
+            listContainer.innerHTML = View.renderServicesList(Store.state.services);
         }
-    }
-    applyTheme();
-    tg.onEvent('themeChanged', applyTheme);
-}
 
-function initNavigation() {
-    const navItems = document.querySelectorAll('.nav-item');
-    const views = document.querySelectorAll('.view');
-    navItems.forEach(item => {
-        item.addEventListener('click', () => {
-            const targetId = item.getAttribute('data-target');
-            const targetView = document.getElementById(targetId);
-            if (!targetView) return;
-            navItems.forEach(nav => nav.classList.remove('active'));
-            views.forEach(view => view.classList.remove('active'));
-            item.classList.add('active');
-            targetView.classList.add('active');
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-            if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+        // 3. Смета (Advanced Mode)
+        const estContainer = document.getElementById('estimate-container');
+        if (estContainer) {
+            estContainer.innerHTML = View.renderEstimateList(Store.state.estimate, Store.state.services);
+            
+            // Обновляем итоговую сумму сметы
+            const totalEl = document.getElementById('estimate-total-sum');
+            if (totalEl) {
+                const total = Store.state.estimate.reduce((acc, obj) => 
+                    acc + obj.services.reduce((sAcc, s) => sAcc + s.price, 0), 0);
+                totalEl.textContent = total.toLocaleString() + ' ₽';
+            }
+        }
+    },
+
+    renderCRM() {
+        const container = document.getElementById('partners-list');
+        if (!container) return;
+
+        // Получаем отфильтрованные данные
+        const partners = Store.getPartners(this.uiState.crmFilter, this.uiState.crmSearch);
+        
+        // Считаем статистику (по ВСЕМ партнерам, а не фильтрованным)
+        let totalDebt = 0, totalPotential = 0;
+        Store.state.partners.forEach(p => {
+            totalDebt += p.finance.debt;
+            totalPotential += (p.finance.total - p.finance.paid);
         });
-    });
-}
 
-// === 3. КАЛЬКУЛЯТОР ===
-function initSimpleCalculator() {
-    const typeSelect = document.getElementById('calc-service-type');
-    const dynamicContainer = document.getElementById('dynamic-calc-inputs');
-    const priceDisplay = document.getElementById('calc-total-price');
-    const timeDisplay = document.getElementById('calc-total-time');
-    const orderBtn = document.getElementById('btn-order-calc');
-    const fileInput = document.getElementById('calc-file-input');
-    const dropZone = document.getElementById('file-drop-zone');
-    let uploadedFiles = []; 
+        container.innerHTML = View.renderCRM(partners, this.uiState.crmFilter, totalDebt, totalPotential);
+    },
 
-    if (!typeSelect || !dynamicContainer) return;
+    // === EVENT HANDLERS (DELEGATION) ===
 
-    function renderInputs() {
+    setupEventListeners() {
+        // 1. Навигация (Табы)
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.addEventListener('click', () => {
+                const targetId = item.getAttribute('data-target');
+                this.switchTab(targetId);
+            });
+        });
+
+        // 2. Глобальный слушатель кликов
+        document.body.addEventListener('click', (e) => {
+            const target = e.target.closest('[data-action]');
+            if (!target) return;
+            
+            const action = target.getAttribute('data-action');
+            this.handleAction(action, target, e);
+        });
+
+        // 3. Слушатели инпутов (Калькулятор, CRM поиск)
+        document.body.addEventListener('input', (e) => {
+            // Калькулятор (range)
+            if (e.target.classList.contains('calc-input')) {
+                if (e.target.type === 'range') {
+                    const valSpan = document.getElementById(`val-${e.target.getAttribute('data-id')}`);
+                    if (valSpan) valSpan.textContent = e.target.value;
+                }
+                this.calculateSimpleTotal();
+            }
+            
+            // CRM Поиск
+            if (e.target.getAttribute('data-action') === 'crm-search') {
+                this.uiState.crmSearch = e.target.value.trim();
+                this.renderCRM();
+            }
+
+            // Смета (изменение имени/источников)
+            if (e.target.getAttribute('data-action') === 'update-est-name') {
+                const idx = Number(e.target.getAttribute('data-obj-idx'));
+                Store.updateEstimateObject(idx, 'name', e.target.value);
+            }
+            if (e.target.getAttribute('data-action') === 'update-est-sources') {
+                const idx = Number(e.target.getAttribute('data-obj-idx'));
+                Store.updateEstimateObject(idx, 'sourcesCount', parseInt(e.target.value) || 0);
+            }
+        });
+
+        // 4. Change события (Select)
+        document.body.addEventListener('change', (e) => {
+            if (e.target.id === 'calc-service-type') {
+                this.updateCalcInputs();
+            }
+            if (e.target.id === 'calc-file-input') {
+                this.handleFileUpload(e.target.files);
+            }
+            // Смета: смена услуги
+            if (e.target.getAttribute('data-action') === 'update-est-service') {
+                const objIdx = Number(e.target.getAttribute('data-obj-idx'));
+                const srvIdx = Number(e.target.getAttribute('data-srv-idx'));
+                const newId = e.target.value;
+                const srvInfo = Store.state.services.find(s => s.id === newId);
+                
+                if (srvInfo) {
+                    Store.state.estimate[objIdx].services[srvIdx] = { serviceId: newId, price: srvInfo.basePrice };
+                    this.renderCalculator(); // Перерисовка сметы
+                }
+            }
+        });
+    },
+
+    handleAction(action, target, event) {
+        // --- ПРОФИЛЬ ---
+        if (action === 'contact-telegram') {
+            const url = CONFIG.TELEGRAM_LINK;
+            if (tg.openTelegramLink) tg.openTelegramLink(url);
+            else window.open(url, '_blank');
+        }
+        if (action === 'nav-to-calc') {
+            document.querySelector('.nav-item[data-target="view-services"]').click();
+        }
+        if (action === 'open-status-editor') {
+            this.openStatusModal();
+        }
+
+        // --- ПРОЕКТЫ ---
+        if (action === 'open-project-modal') {
+            const id = Number(target.getAttribute('data-id'));
+            const project = Store.state.projects.find(p => p.id === id);
+            if (project) this.openProjectModal(project);
+        }
+        if (action === 'close-modal') {
+            document.querySelectorAll('.modal').forEach(m => m.classList.add('hidden'));
+        }
+
+        // --- КАЛЬКУЛЯТОР ---
+        if (action === 'switch-calc-mode') {
+            const mode = target.getAttribute('data-mode');
+            this.switchCalcMode(mode, target);
+        }
+        if (action === 'order-calc') {
+            this.submitSimpleOrder();
+        }
+        if (action === 'remove-file') {
+            const idx = Number(target.getAttribute('data-idx'));
+            this.uiState.uploadedFiles.splice(idx, 1);
+            this.renderFileList();
+        }
+        // Смета
+        if (action === 'add-est-obj') {
+            Store.addToEstimate({ id: Date.now(), name: `Объект №${Store.state.estimate.length + 1}`, sourcesCount: 10, services: [] });
+            this.renderCalculator();
+        }
+        if (action === 'remove-est-obj') {
+            if(confirm('Удалить объект?')) {
+                const idx = Number(target.getAttribute('data-obj-idx'));
+                Store.removeFromEstimate(idx);
+                this.renderCalculator();
+            }
+        }
+        if (action === 'add-est-service') {
+            const idx = Number(target.getAttribute('data-obj-idx'));
+            if (Store.state.services.length > 0) {
+                const s = Store.state.services[0];
+                Store.state.estimate[idx].services.push({ serviceId: s.id, price: s.basePrice });
+                this.renderCalculator();
+            }
+        }
+        if (action === 'remove-est-service') {
+            const objIdx = Number(target.getAttribute('data-obj-idx'));
+            const srvIdx = Number(target.getAttribute('data-srv-idx'));
+            Store.state.estimate[objIdx].services.splice(srvIdx, 1);
+            this.renderCalculator();
+        }
+        if (action === 'send-estimate') {
+            this.submitEstimateOrder();
+        }
+
+        // --- CRM ---
+        if (action === 'crm-filter') {
+            this.uiState.crmFilter = target.getAttribute('data-val');
+            this.renderCRM();
+        }
+        if (action === 'crm-toggle-details') {
+            const id = target.getAttribute('data-id');
+            const details = document.getElementById(`crm-details-${id}`);
+            const arrow = document.getElementById(`crm-arrow-${id}`);
+            if (details) {
+                details.classList.toggle('open');
+                arrow.style.transform = details.classList.contains('open') ? 'rotate(180deg)' : 'rotate(0deg)';
+            }
+        }
+        if (action === 'crm-copy-inn') {
+            const inn = target.getAttribute('data-inn');
+            navigator.clipboard.writeText(inn);
+            if(tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+            alert('ИНН скопирован');
+        }
+        if (action === 'crm-delete') {
+            const id = Number(target.getAttribute('data-id'));
+            if(confirm('Удалить партнера?')) {
+                Store.deletePartner(id);
+                this.renderCRM();
+            }
+        }
+
+        // --- ПАРТНЕРСКИЙ ПРОФИЛЬ ---
+        if (action === 'partner-save') {
+            this.savePartnerProfile();
+        }
+        if (action === 'partner-edit') {
+            this.togglePartnerEdit(true);
+        }
+        if (action === 'partner-logout') {
+            if(confirm('Выйти?')) {
+                localStorage.removeItem('eco_partner_profile');
+                document.getElementById('partner-form').reset();
+                this.checkPartnerAuth();
+            }
+        }
+        
+        // --- АДМИН МОДАЛКА ---
+        if (action === 'save-status') {
+            this.saveAdminStatus();
+        }
+    },
+
+    // === LOGIC HELPERS ===
+
+    switchTab(targetId) {
+        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+        document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+        
+        document.querySelector(`.nav-item[data-target="${targetId}"]`)?.classList.add('active');
+        document.getElementById(targetId)?.classList.add('active');
+        
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+    },
+
+    // --- Calculator Logic ---
+    updateCalcInputs() {
+        const typeSelect = document.getElementById('calc-service-type');
+        const container = document.getElementById('dynamic-calc-inputs');
+        if (!typeSelect || !container) return;
+
         const serviceId = typeSelect.value;
-        const service = servicesData.find(s => s.id === serviceId);
-        dynamicContainer.innerHTML = ''; 
+        const service = Store.state.services.find(s => s.id === serviceId);
+        
+        container.innerHTML = View.renderCalculatorInputs(service);
+        this.calculateSimpleTotal();
+    },
+
+    calculateSimpleTotal() {
+        const typeSelect = document.getElementById('calc-service-type');
+        if (!typeSelect) return;
+        
+        const service = Store.state.services.find(s => s.id === typeSelect.value);
         if (!service) return;
 
-        service.params.forEach(param => {
-            const wrapper = document.createElement('div');
-            if (param.type === 'range') {
-                wrapper.className = 'form-group';
-                wrapper.innerHTML = `<label>${param.label}</label><input type="range" class="calc-input" data-id="${param.id}" min="${param.min}" max="${param.max}" step="${param.step}" value="${param.default}"><div class="calc-range-wrapper"><span>${param.min}</span><span id="val-${param.id}" style="color:var(--tg-theme-button-color)">${param.default}</span><span>${param.max}</span></div>`;
-            } else if (param.type === 'select') {
-                const optionsHTML = param.options.map(opt => `<option value="${opt.val}">${opt.text}</option>`).join('');
-                wrapper.className = 'form-group';
-                wrapper.innerHTML = `<label>${param.label}</label><select class="calc-input" data-id="${param.id}">${optionsHTML}</select>`;
-            } else if (param.type === 'checkbox') {
-                wrapper.className = 'form-group checkbox-group';
-                wrapper.innerHTML = `<input type="checkbox" class="calc-input" id="chk-${param.id}" data-id="${param.id}"><label for="chk-${param.id}">${param.label}</label>`;
-            }
-            dynamicContainer.appendChild(wrapper);
-        });
-
-        document.querySelectorAll('.calc-input').forEach(input => {
-            input.addEventListener('input', (e) => {
-                if(e.target.type === 'range') document.getElementById(`val-${e.target.getAttribute('data-id')}`).textContent = e.target.value;
-                calculateTotal();
-            });
-        });
-        calculateTotal();
-    }
-
-    function calculateTotal() {
-        const serviceId = typeSelect.value;
-        const service = servicesData.find(s => s.id === serviceId);
         let total = service.basePrice;
         let days = 10;
+
         document.querySelectorAll('.calc-input').forEach(input => {
             const paramId = input.getAttribute('data-id');
-            const paramConfig = service.params.find(p => p.id === paramId);
-            if (!paramConfig) return;
-            if (paramConfig.type === 'range') {
+            const param = service.params.find(p => p.id === paramId);
+            if (!param) return;
+
+            if (param.type === 'range' || param.type === 'number') {
                 const val = parseInt(input.value) || 0;
-                if (paramConfig.costPerUnit) total += (val * paramConfig.costPerUnit);
+                if (param.costPerUnit) total += (val * param.costPerUnit);
                 days += Math.floor(val / 5);
-            } else if (paramConfig.type === 'select') {
+            } else if (param.type === 'select') {
                 const val = parseInt(input.value);
-                const option = paramConfig.options.find(o => o.val === val);
-                if (option?.cost) total += option.cost;
-            } else if (paramConfig.type === 'checkbox') {
-                if (input.checked && paramConfig.cost) total += paramConfig.cost;
+                const opt = param.options.find(o => o.val === val);
+                if (opt?.cost) total += opt.cost;
+            } else if (param.type === 'checkbox') {
+                if (input.checked && param.cost) total += param.cost;
             }
         });
-        if(priceDisplay) priceDisplay.textContent = total.toLocaleString('ru-RU') + ' ₽';
-        if(timeDisplay) timeDisplay.textContent = `${days}-${days + 5} раб. дней`;
-    }
 
-    if (dropZone && fileInput) {
-        dropZone.addEventListener('click', () => fileInput.click());
-        fileInput.addEventListener('change', (e) => {
-            if (e.target.files.length > 0) {
-                Array.from(e.target.files).forEach(file => {
-                    if (!uploadedFiles.includes(file.name)) uploadedFiles.push(file.name);
-                });
-                renderFileList();
-            }
-            fileInput.value = ''; 
-        });
-    }
+        document.getElementById('calc-total-price').textContent = total.toLocaleString('ru-RU') + ' ₽';
+        document.getElementById('calc-total-time').textContent = `${days}-${days + 5} раб. дней`;
+    },
 
-    function renderFileList() {
-        const listDisplay = document.getElementById('file-list-display');
-        if (!listDisplay) return;
-        listDisplay.innerHTML = uploadedFiles.map((name, index) => `<div class="file-item"><span style="overflow: hidden; text-overflow: ellipsis;">📎 ${name}</span><i class="fa-solid fa-xmark file-remove" onclick="removeFileGlobal(${index})"></i></div>`).join('');
-    }
-    window.removeFileGlobal = function(index) { uploadedFiles.splice(index, 1); renderFileList(); };
-
-    if (orderBtn) {
-        orderBtn.addEventListener('click', () => {
-            const serviceObj = servicesData.find(s => s.id === typeSelect.value);
-            const serviceName = serviceObj ? serviceObj.name : "Услуга";
-            
-            // Получаем цену (удаляем ' ₽' и пробелы для числа)
-            const priceStr = priceDisplay.textContent; 
-            // Логика отправки в Telegram (оставляем как было)
-            // ... (код формирования msg и открытия ссылки) ...
-            
-            let details = '';
-            document.querySelectorAll('.calc-input').forEach(input => {
-                const label = input.closest('.form-group').querySelector('label')?.textContent || '';
-                let val = input.value;
-                if (input.type === 'checkbox') val = input.checked ? 'Да' : 'Нет';
-                if (input.tagName === 'SELECT') val = input.options[input.selectedIndex].text;
-                details += `\n🔹 ${label}: ${val}`;
+    handleFileUpload(files) {
+        if (files.length > 0) {
+            Array.from(files).forEach(file => {
+                if (!this.uiState.uploadedFiles.includes(file.name)) {
+                    this.uiState.uploadedFiles.push(file.name);
+                }
             });
-            const fileMsg = uploadedFiles.length > 0 ? `\n📎 Файлов: ${uploadedFiles.length}` : '';
-            const msg = `👋 *Заявка*\n\n🛠 ${serviceName}${details}\n\n💰 ${priceStr}${fileMsg}`;
-            
-            const botLink = CONFIG.TELEGRAM_LINK.replace('https://t.me/', '');
-            const url = `https://t.me/${botLink}?text=${encodeURIComponent(msg)}`;
-            
-            if(tg.openTelegramLink) tg.openTelegramLink(url);
-            else window.open(url, '_blank');
-
-            // === НОВОЕ: Создаем проект ===
-            createProjectFromRequest(serviceName, 0); 
-        });
-    }
-    typeSelect.addEventListener('change', renderInputs);
-    renderInputs();
-}
-
-// === 4. ПАРТНЕРСКИЙ ПРОФИЛЬ ===
-function checkFirstVisit() {
-    const data = localStorage.getItem('eco_partner_profile');
-    const authBlock = document.getElementById('partner-auth');
-    const dashBlock = document.getElementById('partner-dashboard');
-    if (!data) {
-        authBlock?.classList.remove('hidden');
-        dashBlock?.classList.add('hidden');
-    } else {
-        authBlock?.classList.add('hidden');
-        dashBlock?.classList.remove('hidden');
-        renderPartnerDashboard(JSON.parse(data));
-    }
-}
-function renderPartnerDashboard(data) {
-    if(document.getElementById('lk-company-name')) document.getElementById('lk-company-name').textContent = data.name;
-    if(document.getElementById('lk-inn')) document.getElementById('lk-inn').textContent = data.inn ? `ИНН: ${data.inn}` : 'ИНН: —';
-    if(document.getElementById('lk-contact')) document.getElementById('lk-contact').textContent = data.contact || '—';
-    if(document.getElementById('lk-email')) document.getElementById('lk-email').textContent = data.email || '—';
-    const statusEl = document.getElementById('lk-status');
-    if(statusEl) statusEl.textContent = data.ordersCount > 0 ? "Постоянный клиент" : "Новый партнер";
-}
-window.savePartnerProfile = function() {
-    const nameInput = document.getElementById('p-name');
-    const innInput = document.getElementById('p-inn');
-    const contactInput = document.getElementById('p-contact');
-    const emailInput = document.getElementById('p-email');
-
-    if (!nameInput || !nameInput.value.trim()) { 
-        alert("Введите название организации"); 
-        return; 
-    }
-
-    // 1. Собираем объект данных
-    const profileData = {
-        name: nameInput.value,
-        inn: innInput?.value || "",
-        contact: contactInput?.value || "",
-        email: emailInput?.value || "",
-        ordersCount: 0 // Для счетчика лояльности
-    };
-
-    // 2. Генерируем или получаем стабильный ID для этого пользователя
-    let partnerId = localStorage.getItem('eco_partner_id');
-    if (!partnerId) {
-        partnerId = Date.now(); // Генерируем уникальный ID
-        localStorage.setItem('eco_partner_id', partnerId);
-    }
-    partnerId = Number(partnerId);
-
-    // 3. Сохраняем в LocalStorage (для отображения в ЛК)
-    localStorage.setItem('eco_partner_profile', JSON.stringify(profileData));
-
-    // 4. === ЛОГИКА CRM ===
-    // Ищем, есть ли уже этот партнер в списке CRM
-    const existingIndex = partnersData.findIndex(p => p.id === partnerId);
-
-    if (existingIndex > -1) {
-        // ОБНОВЛЕНИЕ: Если партнер уже есть, обновляем его данные, сохраняя админские пометки
-        partnersData[existingIndex] = {
-            ...partnersData[existingIndex], // Оставляем старые поля (рейтинг, заметки, долги)
-            name: profileData.name,
-            inn: profileData.inn,
-            contact: profileData.contact,
-            email: profileData.email
-        };
-    } else {
-        // СОЗДАНИЕ: Если партнера нет, добавляем как "Лид"
-        const newPartnerCRM = {
-            id: partnerId,
-            name: profileData.name,
-            inn: profileData.inn,
-            contact: profileData.contact,
-            username: window.Telegram?.WebApp?.initDataUnsafe?.user?.username || "", // Пытаемся взять юзернейм из TG
-            phone: "", // Телефон пока пустой
-            email: profileData.email,
-            
-            status: "lead", // Статус "Новый/Лид"
-            contract: "Нет договора",
-            
-            projects: [], // Пока нет проектов
-            finance: { total: 0, paid: 0, debt: 0 },
-            rating: 0, // Рейтинг 0 (новый)
-            note: "Зарегистрировался через приложение"
-        };
-        partnersData.unshift(newPartnerCRM); // Добавляем в начало списка
-    }
-
-    // 5. Обновляем UI
-    checkFirstVisit(); // Обновляет вид ЛК
-    if (typeof renderModernCRM === 'function') {
-        renderModernCRM(); // Обновляет список в админке
-    }
-
-    if(tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-    
-    // Переключаем вкладку обратно на просмотр профиля
-    togglePartnerEditMode(false);
-};
-window.togglePartnerEditMode = function(isEdit) {
-    if (isEdit) {
-        const stored = localStorage.getItem('eco_partner_profile');
-        if(stored) {
-            const p = JSON.parse(stored);
-            document.getElementById('p-name').value = p.name;
-            document.getElementById('p-inn').value = p.inn;
-            document.getElementById('p-contact').value = p.contact;
-            document.getElementById('p-email').value = p.email;
+            this.renderFileList();
         }
-        document.getElementById('partner-auth')?.classList.remove('hidden');
-        document.getElementById('partner-dashboard')?.classList.add('hidden');
-    } else { checkFirstVisit(); }
-};
-window.logoutPartner = function() {
-    if(confirm('Выйти?')) {
-        localStorage.removeItem('eco_partner_profile');
-        document.getElementById('partner-form').reset();
-        checkFirstVisit();
-    }
-};
+    },
 
-// === 5. ОБЩИЕ ФУНКЦИИ (ДЛЯ UI) ===
-window.switchCalcMode = function(mode, btn) {
-    document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
-    if(btn) btn.classList.add('active');
-    const simpleMode = document.getElementById('calc-simple-mode');
-    const advMode = document.getElementById('calc-advanced-mode');
-    if (mode === 'simple') {
-        simpleMode?.classList.remove('hidden');
-        advMode?.classList.add('hidden');
-    } else {
-        simpleMode?.classList.add('hidden');
-        advMode?.classList.remove('hidden');
-        if (estimateData.length === 0) window.addNewObjectToEstimate();
-    }
-};
-window.addNewObjectToEstimate = function() { estimateData.push({ id: Date.now(), name: `Объект №${estimateData.length + 1}`, services: [] }); renderEstimateLogic(); };
-window.addServiceToObject = function(objIndex) { if(servicesData.length > 0) { estimateData[objIndex].services.push({ serviceId: servicesData[0].id, price: servicesData[0].basePrice }); renderEstimateLogic(); }};
-window.removeServiceFromObject = function(objIndex, srvIndex) { estimateData[objIndex].services.splice(srvIndex, 1); renderEstimateLogic(); };
-window.removeObject = function(index) { if (confirm('Удалить?')) { estimateData.splice(index, 1); renderEstimateLogic(); }};
-window.updateServiceType = function(objIndex, srvIndex, newId) {
-    const srvInfo = servicesData.find(s => s.id === newId);
-    if(srvInfo) { estimateData[objIndex].services[srvIndex].serviceId = newId; estimateData[objIndex].services[srvIndex].price = srvInfo.basePrice; renderEstimateLogic(); }
-};
-function renderEstimateLogic() {
-    const container = document.getElementById('estimate-container');
-    if(!container) return;
-    container.innerHTML = '';
-    let globalTotal = 0;
-    estimateData.forEach((obj, objIndex) => {
-        let objTotal = 0;
-        const servicesHTML = obj.services.map((srv, srvIndex) => {
-            objTotal += srv.price;
-            const options = servicesData.map(s => `<option value="${s.id}" ${s.id === srv.serviceId ? 'selected' : ''}>${s.name}</option>`).join('');
-            return `<div class="service-row"><select onchange="window.updateServiceType(${objIndex}, ${srvIndex}, this.value)" style="width:60%; border:none; background:transparent; font-weight:500;">${options}</select><div style="display:flex; align-items:center; gap:10px;"><span>${srv.price.toLocaleString()} ₽</span><i class="fa-solid fa-trash text-red" onclick="window.removeServiceFromObject(${objIndex}, ${srvIndex})"></i></div></div>`;
-        }).join('');
-        globalTotal += objTotal;
-        const card = document.createElement('div');
-        card.className = 'estimate-object-card';
-        card.innerHTML = `<div class="obj-header"><input type="text" value="${obj.name}" onchange="estimateData[${objIndex}].name = this.value"><span class="remove-obj-btn" onclick="window.removeObject(${objIndex})">Удалить</span></div><div class="obj-services-list">${servicesHTML.length ? servicesHTML : '<p style="font-size:0.8rem; color:#999;">Нет услуг</p>'}</div><div style="text-align:right; margin-bottom:10px;"><small>Итого: <strong>${objTotal.toLocaleString()} ₽</strong></small></div><button class="btn btn-outline full-width" style="font-size:0.8rem; padding:8px;" onclick="window.addServiceToObject(${objIndex})"><i class="fa-solid fa-plus"></i> Добавить услугу</button>`;
-        container.appendChild(card);
-    });
-    const totalEl = document.getElementById('estimate-total-sum');
-    if(totalEl) totalEl.textContent = globalTotal.toLocaleString() + ' ₽';
-}
-window.sendEstimateToTelegram = function() {
-    if (estimateData.length === 0) return;
-    
-    // ... (старый код формирования msg) ...
-    let msg = "📑 *КП (Смета):*\n\n";
-    let total = 0;
-    estimateData.forEach(obj => {
-        msg += `🏭 *${obj.name}*\n`;
-        obj.services.forEach(srv => {
-            const srvInfo = servicesData.find(s => s.id === srv.serviceId);
-            msg += ` — ${srvInfo.name}: ${srv.price.toLocaleString()} ₽\n`;
-            total += srv.price;
+    renderFileList() {
+        const container = document.getElementById('file-list-display');
+        if (!container) return;
+        container.innerHTML = this.uiState.uploadedFiles.map((name, idx) => `
+            <div class="file-item">
+                <span style="overflow: hidden; text-overflow: ellipsis;">📎 ${name}</span>
+                <i class="fa-solid fa-xmark file-remove" data-action="remove-file" data-idx="${idx}"></i>
+            </div>
+        `).join('');
+    },
+
+    switchCalcMode(mode, btn) {
+        document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        
+        const simple = document.getElementById('calc-simple-mode');
+        const advanced = document.getElementById('calc-advanced-mode');
+        
+        if (mode === 'simple') {
+            simple.classList.remove('hidden');
+            advanced.classList.add('hidden');
+        } else {
+            simple.classList.add('hidden');
+            advanced.classList.remove('hidden');
+            if (Store.state.estimate.length === 0) {
+                // Авто-создание первого объекта
+                Store.addToEstimate({ id: Date.now(), name: 'Объект №1', sourcesCount: 10, services: [] });
+                this.renderCalculator();
+            }
+        }
+    },
+
+    submitSimpleOrder() {
+        const typeSelect = document.getElementById('calc-service-type');
+        const service = Store.state.services.find(s => s.id === typeSelect.value);
+        const priceStr = document.getElementById('calc-total-price').textContent;
+        
+        let details = '';
+        document.querySelectorAll('.calc-input').forEach(input => {
+            const label = input.closest('.form-group').querySelector('label')?.textContent || '';
+            let val = input.value;
+            if (input.type === 'checkbox') val = input.checked ? 'Да' : 'Нет';
+            if (input.tagName === 'SELECT') val = input.options[input.selectedIndex].text;
+            details += `\n🔹 ${label}: ${val}`;
         });
-        msg += "\n";
-    });
-    msg += `💰 *ИТОГО: ${total.toLocaleString()} ₽*`;
 
-    const botLink = CONFIG.TELEGRAM_LINK.replace('https://t.me/', '');
-    const url = `https://t.me/${botLink}?text=${encodeURIComponent(msg)}`;
+        const fileMsg = this.uiState.uploadedFiles.length > 0 ? `\n📎 Файлов: ${this.uiState.uploadedFiles.length}` : '';
+        const msg = `👋 *Заявка*\n\n🛠 ${service.name}${details}\n\n💰 ${priceStr}${fileMsg}`;
+        
+        this.sendToTelegram(msg);
+        this.createProject(service.name);
+    },
 
-    if(tg.openTelegramLink) tg.openTelegramLink(url);
-    else window.open(url, '_blank');
+    submitEstimateOrder() {
+        if (Store.state.estimate.length === 0) return;
+        let msg = "📑 *КП (Смета):*\n\n";
+        let total = 0;
+        
+        Store.state.estimate.forEach(obj => {
+            msg += `🏭 *${obj.name}* (Источников: ${obj.sourcesCount})\n`;
+            obj.services.forEach(srv => {
+                const sInfo = Store.state.services.find(s => s.id === srv.serviceId);
+                msg += ` — ${sInfo.name}: ${srv.price.toLocaleString()} ₽\n`;
+                total += srv.price;
+            });
+            msg += "\n";
+        });
+        msg += `💰 *ИТОГО: ${total.toLocaleString()} ₽*`;
+        
+        this.sendToTelegram(msg);
+        this.createProject("Комплексная смета (КП)");
+    },
 
-    // === НОВОЕ: Создаем проект ===
-    createProjectFromRequest("Комплексная смета (КП)", total);
+    sendToTelegram(text) {
+        const botLink = CONFIG.TELEGRAM_LINK.replace('https://t.me/', '');
+        const url = `https://t.me/${botLink}?text=${encodeURIComponent(text)}`;
+        if(tg.openTelegramLink) tg.openTelegramLink(url);
+        else window.open(url, '_blank');
+    },
+
+    createProject(type) {
+        const stored = localStorage.getItem('eco_partner_profile');
+        const clientName = stored ? JSON.parse(stored).name : "Новый клиент";
+        const partnerId = localStorage.getItem('eco_partner_id') || 0;
+
+        const newProject = {
+            id: Date.now(),
+            ownerId: Number(partnerId),
+            clientName: clientName,
+            type: type,
+            status: "analysis",
+            statusLabel: "На согласовании",
+            progress: 5,
+            deadline: "Оценка...",
+            resources: { method: "—", details: "Ожидает" },
+            history: [{ date: new Date().toLocaleDateString(), type: "start", text: "Заявка отправлена" }],
+            files: []
+        };
+
+        Store.addProject(newProject);
+        this.renderProjects();
+        
+        // Обновляем CRM если есть партнер
+        const partner = Store.state.partners.find(p => p.id == partnerId);
+        if (partner) {
+            partner.projects.push({ type: type, stage: "Согласование", deadline: "?" });
+            if (partner.status === 'lead') partner.status = 'active';
+            this.renderCRM();
+        }
+    },
+
+    // --- Partner Profile ---
+    checkPartnerAuth() {
+        const data = localStorage.getItem('eco_partner_profile');
+        const authBlock = document.getElementById('partner-auth');
+        const dashBlock = document.getElementById('partner-dashboard');
+        
+        if (!data) {
+            authBlock?.classList.remove('hidden');
+            dashBlock?.classList.add('hidden');
+        } else {
+            authBlock?.classList.add('hidden');
+            dashBlock?.classList.remove('hidden');
+            this.renderPartnerDashboard(JSON.parse(data));
+        }
+    },
+
+    renderPartnerDashboard(data) {
+        if(document.getElementById('lk-company-name')) document.getElementById('lk-company-name').textContent = data.name;
+        if(document.getElementById('lk-inn')) document.getElementById('lk-inn').textContent = data.inn ? `ИНН: ${data.inn}` : 'ИНН: —';
+        if(document.getElementById('lk-contact')) document.getElementById('lk-contact').textContent = data.contact || '—';
+        if(document.getElementById('lk-email')) document.getElementById('lk-email').textContent = data.email || '—';
+        const statusEl = document.getElementById('lk-status');
+        if(statusEl) statusEl.textContent = data.ordersCount > 0 ? "Постоянный клиент" : "Новый партнер";
+    },
+
+    savePartnerProfile() {
+        const name = document.getElementById('p-name').value;
+        const inn = document.getElementById('p-inn').value;
+        const contact = document.getElementById('p-contact').value;
+        const email = document.getElementById('p-email').value;
+
+        if (!name.trim()) { alert("Введите название"); return; }
+
+        const profileData = { name, inn, contact, email, ordersCount: 0 };
+        
+        let partnerId = localStorage.getItem('eco_partner_id');
+        if (!partnerId) {
+            partnerId = Date.now();
+            localStorage.setItem('eco_partner_id', partnerId);
+        }
+        partnerId = Number(partnerId);
+
+        localStorage.setItem('eco_partner_profile', JSON.stringify(profileData));
+
+        // Sync with CRM
+        const existing = Store.state.partners.find(p => p.id === partnerId);
+        if (existing) {
+            Store.updatePartner(partnerId, { name, inn, contact, email });
+        } else {
+            Store.addPartner({
+                id: partnerId, name, inn, contact, email,
+                username: Store.state.user?.username || "",
+                phone: "", status: "lead", contract: "Нет договора",
+                projects: [], finance: { total: 0, paid: 0, debt: 0 },
+                rating: 0, note: "Из приложения"
+            });
+        }
+
+        this.checkPartnerAuth();
+        this.renderCRM();
+        if(tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+    },
+
+    togglePartnerEdit(isEdit) {
+        if (isEdit) {
+            const stored = localStorage.getItem('eco_partner_profile');
+            if(stored) {
+                const p = JSON.parse(stored);
+                document.getElementById('p-name').value = p.name;
+                document.getElementById('p-inn').value = p.inn;
+                document.getElementById('p-contact').value = p.contact;
+                document.getElementById('p-email').value = p.email;
+            }
+            document.getElementById('partner-auth')?.classList.remove('hidden');
+            document.getElementById('partner-dashboard')?.classList.add('hidden');
+        }
+    },
+
+    // --- Admin Modal ---
+    openStatusModal() {
+        const modal = document.getElementById('status-edit-modal');
+        if (!modal) return;
+        
+        // Скрываем выбор цвета (авто-расчет)
+        const cp = document.querySelector('.color-picker-row');
+        if(cp) cp.style.display = 'none';
+
+        document.getElementById('edit-percent').value = Store.state.engineer.workload.percent;
+        document.getElementById('edit-percent-val').textContent = Store.state.engineer.workload.percent;
+        document.getElementById('edit-status-text').value = Store.state.engineer.workload.statusText;
+        
+        modal.classList.remove('hidden');
+    },
+
+    saveAdminStatus() {
+        const percent = parseInt(document.getElementById('edit-percent').value);
+        const text = document.getElementById('edit-status-text').value;
+        
+        // Auto Color Logic (Green -> Red)
+        const hue = Math.floor((100 - percent) * 1.2);
+        const color = `hsl(${hue}, 85%, 45%)`;
+
+        const newStatus = { percent, statusText: text || "Работаю", color };
+        Store.saveWorkloadStatus(newStatus);
+        
+        this.renderProfile();
+        document.getElementById('status-edit-modal').classList.add('hidden');
+        if(tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+    },
+
+    openProjectModal(project) {
+        const modal = document.getElementById('project-detail-modal');
+        const body = document.getElementById('modal-body');
+        if (!modal || !body) return;
+        
+        body.innerHTML = View.renderProjectModalContent(project);
+        modal.classList.remove('hidden');
+    }
 };
-window.goToCalculator = function() {
-    const calcTab = document.querySelector('.nav-item[data-target="view-services"]');
-    if (calcTab) { calcTab.click(); setTimeout(() => { document.getElementById('calc-simple-mode')?.scrollIntoView({ behavior: 'smooth' }); }, 300); }
-};
 
-// ==========================================
-// === ОБНОВЛЕННЫЙ ФУНКЦИОНАЛ АДМИНА ===
-// ==========================================
-
-// 1. Открыть редактор (скрываем выбор цвета)
-window.openStatusEditor = function() {
-    const modal = document.getElementById('status-edit-modal');
-    if (!modal) return;
-    
-    // Скрываем выбор цвета в UI, так как он теперь автоматический
-    const colorPicker = document.querySelector('.color-picker-row');
-    if(colorPicker) colorPicker.style.display = 'none';
-    
-    document.getElementById('edit-percent').value = engineerProfile.workload.percent;
-    document.getElementById('edit-percent-val').textContent = engineerProfile.workload.percent;
-    document.getElementById('edit-status-text').value = engineerProfile.workload.statusText;
-    
-    modal.classList.remove('hidden');
-};
-
-// 2. Закрыть
-window.closeStatusModal = function() {
-    document.getElementById('status-edit-modal').classList.add('hidden');
-};
-
-// 3. Динамический ползунок
+// Start App
 document.addEventListener('DOMContentLoaded', () => {
-    const range = document.getElementById('edit-percent');
-    if(range) {
-        range.addEventListener('input', (e) => {
-            document.getElementById('edit-percent-val').textContent = e.target.value;
-        });
+    try {
+        Controller.init();
+    } catch (e) {
+        console.error("Init failed:", e);
     }
 });
-
-// 4. ГЕНЕРАЦИЯ ЦВЕТА (Green -> Yellow -> Red)
-// 0% = Hue 120 (Green), 100% = Hue 0 (Red)
-function calculateAutoColor(percent) {
-    // Формула: чем больше процент, тем меньше Hue (ближе к красному)
-    // 100% * 1.2 = 120. 
-    // При percent = 0 -> hue = 120 (Green)
-    // При percent = 50 -> hue = 60 (Yellow)
-    // При percent = 100 -> hue = 0 (Red)
-    const hue = Math.floor((100 - percent) * 1.2);
-    return `hsl(${hue}, 85%, 45%)`; 
-}
-
-// 5. СОХРАНЕНИЕ
-window.saveNewStatus = function() {
-    const newPercent = parseInt(document.getElementById('edit-percent').value);
-    const newText = document.getElementById('edit-status-text').value;
-
-    // Автоматический цвет
-    const autoColor = calculateAutoColor(newPercent);
-
-    const newStatusData = {
-        percent: newPercent,
-        statusText: newText || "Работаю",
-        color: autoColor // Теперь цвет рассчитывается сам!
-    };
-
-    // Обновляем память
-    engineerProfile.workload = newStatusData;
-    // Сохраняем навсегда
-    localStorage.setItem('admin_custom_status', JSON.stringify(newStatusData));
-
-    // Важно: в CSS views.js у нас был градиент. 
-    // Нужно переписать стиль элемента напрямую, чтобы показать сплошной цвет
-    renderProfileView(engineerProfile);
-    
-    // Принудительно меняем стиль, если renderProfileView использует CSS-класс с градиентом
-    const barFill = document.querySelector('.workload-fill');
-    if(barFill) {
-        barFill.style.background = 'none'; // Сбрасываем градиент
-        barFill.style.backgroundColor = autoColor; // Ставим наш цвет
-    }
-
-    window.closeStatusModal();
-    if(tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-};
-
-// === CRM ===
-window.updatePartnerRating = function(id, newRating) {
-    const partner = partnersData.find(p => p.id === id);
-    if (partner) { partner.rating = newRating; renderPartnersView(partnersData); if(tg.HapticFeedback) tg.HapticFeedback.selectionChanged(); }
-};
-window.updatePartnerNote = function(id, text) { const partner = partnersData.find(p => p.id === id); if (partner) partner.note = text; };
-window.openPartnerChat = function(username) {
-    if(tg.openTelegramLink) tg.openTelegramLink(`https://t.me/${username}`); else window.open(`https://t.me/${username}`, '_blank');
-};
-window.deletePartner = function(id) {
-    if(confirm('Удалить?')) {
-        const index = partnersData.findIndex(p => p.id === id);
-        if (index !== -1) { partnersData.splice(index, 1); renderPartnersView(partnersData); }
-    }
-};
-// ==========================================
-// === CRM 2.0 LOGIC ===
-// ==========================================
-
-// Глобальные переменные для фильтра
-let crmSearchQuery = "";
-let crmFilterStatus = "all"; // all, debt, active, lead
-
-// 1. Инициализация CRM (вызывается из initViews)
-function initCRM() {
-    renderModernCRM();
-}
-
-// 2. Функция фильтрации и рендера
-function renderModernCRM() {
-    const container = document.getElementById('partners-list');
-    if (!container) return;
-
-    // Фильтрация
-    let filtered = partnersData.filter(p => {
-        // Поиск по имени или ИНН
-        const matchSearch = p.name.toLowerCase().includes(crmSearchQuery) || 
-                            p.inn.includes(crmSearchQuery);
-        
-        // Фильтр по статусу (табы)
-        let matchFilter = true;
-        if (crmFilterStatus === 'debt') matchFilter = p.finance.debt > 0;
-        if (crmFilterStatus === 'active') matchFilter = p.status === 'active';
-        if (crmFilterStatus === 'lead') matchFilter = p.status === 'lead';
-        
-        return matchSearch && matchFilter;
-    });
-
-    // Считаем общие цифры для дашборда
-    let totalDebt = 0;
-    let totalPotential = 0; // Долг + Остаток к оплате
-    partnersData.forEach(p => {
-        totalDebt += p.finance.debt;
-        totalPotential += (p.finance.total - p.finance.paid);
-    });
-
-    // Обновляем HTML
-    renderCRMHTML(container, filtered, totalDebt, totalPotential);
-}
-
-// 3. Переключение фильтров (Tabs)
-window.setCRMFilter = function(filterType, btn) {
-    crmFilterStatus = filterType;
-    
-    // Визуальное переключение кнопок
-    document.querySelectorAll('.crm-chip').forEach(c => c.classList.remove('active'));
-    if(btn) btn.classList.add('active');
-    
-    renderModernCRM();
-    if(tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
-};
-
-// 4. Поиск
-window.onCRMSearch = function(val) {
-    crmSearchQuery = val.toLowerCase().trim();
-    renderModernCRM();
-};
-
-// 5. Раскрыть/Скрыть детали
-window.toggleCRMDetails = function(id) {
-    const detailsBlock = document.getElementById(`crm-details-${id}`);
-    const arrow = document.getElementById(`crm-arrow-${id}`);
-    
-    if (detailsBlock) {
-        const isOpen = detailsBlock.classList.contains('open');
-        if (isOpen) {
-            detailsBlock.classList.remove('open');
-            arrow.style.transform = 'rotate(0deg)';
-        } else {
-            detailsBlock.classList.add('open');
-            arrow.style.transform = 'rotate(180deg)';
-        }
-    }
-};
-
-// 6. Скопировать ИНН
-window.copyINN = function(inn) {
-    navigator.clipboard.writeText(inn).then(() => {
-        if(tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-        alert("ИНН скопирован: " + inn); // В WebApp лучше использовать кастомный тост, но alert сойдет
-    });
-};
-// js/logic.js
-
-/**
- * Создает проект в списке на основе заявки
- * @param {string} type - Тип услуги (например "НДВ" или "Смета")
- * @param {number} price - Ориентировочная стоимость (числом или 0)
- */
-function createProjectFromRequest(type, price) {
-    // Пытаемся узнать имя клиента из профиля
-    const storedProfile = localStorage.getItem('eco_partner_profile');
-    const clientName = storedProfile ? JSON.parse(storedProfile).name : "Новый клиент (из приложения)";
-    const partnerId = localStorage.getItem('eco_partner_id') || 0;
-
-    const newProject = {
-        id: Date.now(), // Уникальный ID
-        ownerId: Number(partnerId), // Привязка к текущему пользователю
-        clientName: clientName,
-        type: type,
-        status: "analysis", // Технический статус
-        statusLabel: "На согласовании", // Текст для бейджа
-        progress: 5, // Начальный прогресс
-        deadline: "Оценка сроков...",
-        resources: { method: "—", details: "Ожидает подтверждения" },
-        history: [
-            { date: new Date().toLocaleDateString(), type: "start", text: "Заявка отправлена на расчет" }
-        ],
-        files: []
-    };
-
-    // Добавляем проект в начало списка
-    projectsData.unshift(newProject);
-
-    // Обновляем отображение списка проектов
-    if (typeof renderProjectsView === 'function') {
-        // Показываем все проекты админу или только свои пользователю
-        const visibleProjects = isAdmin ? projectsData : projectsData.filter(p => p.ownerId == currentUserId || p.ownerId == partnerId);
-        renderProjectsView(visibleProjects);
-    }
-    
-    // Также обновляем список проектов внутри CRM (в массиве partnersData), если партнер существует
-    const partnerIndex = partnersData.findIndex(p => p.id == partnerId);
-    if (partnerIndex > -1) {
-        partnersData[partnerIndex].projects.push({
-            type: type,
-            stage: "Согласование",
-            deadline: "?"
-        });
-        // Если это первый заказ, можно поменять статус партнера
-        if (partnersData[partnerIndex].status === 'lead') {
-             partnersData[partnerIndex].status = 'active';
-        }
-        if (typeof renderModernCRM === 'function') renderModernCRM();
-    }
-}
-
-
-
