@@ -17,6 +17,7 @@
     --status-green: #2ecc71;
     --status-yellow: #f1c40f;
     --status-red: #e74c3c;
+    --status-blue: #3498db; 
     
     /* Тени и эффекты */
     --card-shadow: 0 2px 8px rgba(0,0,0,0.05);
@@ -46,6 +47,7 @@ body {
 .text-green { color: var(--status-green); }
 .text-yellow { color: var(--status-yellow); }
 .text-red { color: var(--status-red); }
+.text-blue { color: var(--status-blue); }
 
 /* Временно для отладки админских прав (убирать на продакшене через JS) */
 .admin-only { border: 1px dashed red; position: relative; } 
@@ -1177,4 +1179,5 @@ input[type=range] {
 
 /* Звезды рейтинга */
 .rating-stars-mini { font-size: 0.8rem; margin-top: 4px; }
+
 
