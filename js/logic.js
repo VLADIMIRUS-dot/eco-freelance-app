@@ -286,33 +286,47 @@ const Controller = {
         if (action === 'save-status') this.saveAdminStatus();
     },
 
-    // ... (Остальные методы switchTab, updateCalcInputs, calculateSimpleTotal, handleFileUpload, renderFileList, switchCalcMode, submitSimpleOrder, submitEstimateOrder, sendToTelegram, createProject, checkPartnerAuth, renderPartnerDashboard, savePartnerProfile, togglePartnerEdit, openStatusModal, saveAdminStatus, openProjectModal - остаются без изменений из предыдущего ответа)
-    
-    // Для полноты, вот сокращенные версии хелперов, чтобы файл был рабочим:
+    // === LOGIC HELPERS ===
+
     switchTab(targetId) {
         document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
         document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+        
         document.querySelector(`.nav-item[data-target="${targetId}"]`)?.classList.add('active');
         document.getElementById(targetId)?.classList.add('active');
+        
         window.scrollTo({ top: 0, behavior: 'smooth' });
+        if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
     },
+
+    // --- Calculator Logic ---
     updateCalcInputs() {
         const typeSelect = document.getElementById('calc-service-type');
         const container = document.getElementById('dynamic-calc-inputs');
         if (!typeSelect || !container) return;
-        const service = Store.state.services.find(s => s.id === typeSelect.value);
+
+        const serviceId = typeSelect.value;
+        const service = Store.state.services.find(s => s.id === serviceId);
+        
         container.innerHTML = View.renderCalculatorInputs(service);
         this.calculateSimpleTotal();
     },
+
     calculateSimpleTotal() {
         const typeSelect = document.getElementById('calc-service-type');
+        if (!typeSelect) return;
+        
         const service = Store.state.services.find(s => s.id === typeSelect.value);
         if (!service) return;
+
         let total = service.basePrice;
         let days = 10;
+
         document.querySelectorAll('.calc-input').forEach(input => {
-            const param = service.params.find(p => p.id === input.getAttribute('data-id'));
+            const paramId = input.getAttribute('data-id');
+            const param = service.params.find(p => p.id === paramId);
             if (!param) return;
+
             if (param.type === 'range' || param.type === 'number') {
                 const val = parseInt(input.value) || 0;
                 if (param.costPerUnit) total += (val * param.costPerUnit);
@@ -325,28 +339,59 @@ const Controller = {
                 if (input.checked && param.cost) total += param.cost;
             }
         });
+
         document.getElementById('calc-total-price').textContent = total.toLocaleString('ru-RU') + ' ₽';
         document.getElementById('calc-total-time').textContent = `${days}-${days + 5} раб. дней`;
     },
+
     handleFileUpload(files) {
-        Array.from(files).forEach(file => { if (!this.uiState.uploadedFiles.includes(file.name)) this.uiState.uploadedFiles.push(file.name); });
-        this.renderFileList();
+        if (files.length > 0) {
+            Array.from(files).forEach(file => {
+                if (!this.uiState.uploadedFiles.includes(file.name)) {
+                    this.uiState.uploadedFiles.push(file.name);
+                }
+            });
+            this.renderFileList();
+        }
     },
+
     renderFileList() {
         const container = document.getElementById('file-list-display');
-        if (container) container.innerHTML = this.uiState.uploadedFiles.map((name, idx) => `<div class="file-item"><span style="overflow: hidden; text-overflow: ellipsis;">📎 ${name}</span><i class="fa-solid fa-xmark file-remove" data-action="remove-file" data-idx="${idx}"></i></div>`).join('');
+        if (!container) return;
+        container.innerHTML = this.uiState.uploadedFiles.map((name, idx) => `
+            <div class="file-item">
+                <span style="overflow: hidden; text-overflow: ellipsis;">📎 ${name}</span>
+                <i class="fa-solid fa-xmark file-remove" data-action="remove-file" data-idx="${idx}"></i>
+            </div>
+        `).join('');
     },
+
     switchCalcMode(mode, btn) {
         document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
+        
         const simple = document.getElementById('calc-simple-mode');
         const advanced = document.getElementById('calc-advanced-mode');
-        if (mode === 'simple') { simple.classList.remove('hidden'); advanced.classList.add('hidden'); }
-        else { simple.classList.add('hidden'); advanced.classList.remove('hidden'); if (Store.state.estimate.length === 0) { Store.addToEstimate({ id: Date.now(), name: 'Объект №1', sourcesCount: 10, services: [] }); this.renderCalculator(); } }
+        
+        if (mode === 'simple') {
+            simple.classList.remove('hidden');
+            advanced.classList.add('hidden');
+        } else {
+            simple.classList.add('hidden');
+            advanced.classList.remove('hidden');
+            if (Store.state.estimate.length === 0) {
+                // Авто-создание первого объекта
+                Store.addToEstimate({ id: Date.now(), name: 'Объект №1', sourcesCount: 10, services: [] });
+                this.renderCalculator();
+            }
+        }
     },
+
     submitSimpleOrder() {
-        const service = Store.state.services.find(s => s.id === document.getElementById('calc-service-type').value);
+        const typeSelect = document.getElementById('calc-service-type');
+        const service = Store.state.services.find(s => s.id === typeSelect.value);
         const priceStr = document.getElementById('calc-total-price').textContent;
+        
         let details = '';
         document.querySelectorAll('.calc-input').forEach(input => {
             const label = input.closest('.form-group').querySelector('label')?.textContent || '';
@@ -355,15 +400,19 @@ const Controller = {
             if (input.tagName === 'SELECT') val = input.options[input.selectedIndex].text;
             details += `\n🔹 ${label}: ${val}`;
         });
+
         const fileMsg = this.uiState.uploadedFiles.length > 0 ? `\n📎 Файлов: ${this.uiState.uploadedFiles.length}` : '';
         const msg = `👋 *Заявка*\n\n🛠 ${service.name}${details}\n\n💰 ${priceStr}${fileMsg}`;
+        
         this.sendToTelegram(msg);
         this.createProject(service.name);
     },
+
     submitEstimateOrder() {
         if (Store.state.estimate.length === 0) return;
         let msg = "📑 *КП (Смета):*\n\n";
         let total = 0;
+        
         Store.state.estimate.forEach(obj => {
             msg += `🏭 *${obj.name}* (Источников: ${obj.sourcesCount})\n`;
             obj.services.forEach(srv => {
@@ -374,35 +423,65 @@ const Controller = {
             msg += "\n";
         });
         msg += `💰 *ИТОГО: ${total.toLocaleString()} ₽*`;
+        
         this.sendToTelegram(msg);
         this.createProject("Комплексная смета (КП)");
     },
+
     sendToTelegram(text) {
         const botLink = CONFIG.TELEGRAM_LINK.replace('https://t.me/', '');
         const url = `https://t.me/${botLink}?text=${encodeURIComponent(text)}`;
-        if(tg.openTelegramLink) tg.openTelegramLink(url); else window.open(url, '_blank');
+        if(tg.openTelegramLink) tg.openTelegramLink(url);
+        else window.open(url, '_blank');
     },
+
     createProject(type) {
         const stored = localStorage.getItem('eco_partner_profile');
         const clientName = stored ? JSON.parse(stored).name : "Новый клиент";
         const partnerId = localStorage.getItem('eco_partner_id') || 0;
-        const newProject = { id: Date.now(), ownerId: Number(partnerId), clientName: clientName, type: type, status: "analysis", statusLabel: "На согласовании", progress: 5, deadline: "Оценка...", resources: { method: "—", details: "Ожидает" }, history: [{ date: new Date().toLocaleDateString(), type: "start", text: "Заявка отправлена" }], files: [] };
+
+        const newProject = {
+            id: Date.now(),
+            ownerId: Number(partnerId),
+            clientName: clientName,
+            type: type,
+            status: "analysis",
+            statusLabel: "На согласовании",
+            progress: 5,
+            deadline: "Оценка...",
+            resources: { method: "—", details: "Ожидает" },
+            history: [{ date: new Date().toLocaleDateString(), type: "start", text: "Заявка отправлена" }],
+            files: []
+        };
+
         Store.addProject(newProject);
         this.renderProjects();
+        
+        // Обновляем CRM если есть партнер
         const partner = Store.state.partners.find(p => p.id == partnerId);
         if (partner) {
             partner.projects.push({ type: type, stage: "Согласование", deadline: "?" });
             if (partner.status === 'lead') partner.status = 'active';
-            if (Store.state.isAdmin) this.renderCRM();
+            this.renderCRM();
         }
     },
+
+    // --- Partner Profile ---
     checkPartnerAuth() {
         const data = localStorage.getItem('eco_partner_profile');
         const authBlock = document.getElementById('partner-auth');
         const dashBlock = document.getElementById('partner-dashboard');
-        if (!data) { authBlock?.classList.remove('hidden'); dashBlock?.classList.add('hidden'); }
-        else { authBlock?.classList.add('hidden'); dashBlock?.classList.remove('hidden'); this.renderPartnerDashboard(JSON.parse(data)); }
+        
+        if (!data) {
+            authBlock?.classList.remove('hidden');
+            dashBlock?.classList.add('hidden');
+        } else {
+            authBlock?.classList.add('hidden');
+            dashBlock?.classList.remove('hidden');
+            this.renderPartnerDashboard(JSON.parse(data));
+        }
     },
+
     renderPartnerDashboard(data) {
         if(document.getElementById('lk-company-name')) document.getElementById('lk-company-name').textContent = data.name;
         if(document.getElementById('lk-inn')) document.getElementById('lk-inn').textContent = data.inn ? `ИНН: ${data.inn}` : 'ИНН: —';
@@ -411,26 +490,45 @@ const Controller = {
         const statusEl = document.getElementById('lk-status');
         if(statusEl) statusEl.textContent = data.ordersCount > 0 ? "Постоянный клиент" : "Новый партнер";
     },
+
     savePartnerProfile() {
         const name = document.getElementById('p-name').value;
         const inn = document.getElementById('p-inn').value;
         const contact = document.getElementById('p-contact').value;
         const email = document.getElementById('p-email').value;
+
         if (!name.trim()) { alert("Введите название"); return; }
+
         const profileData = { name, inn, contact, email, ordersCount: 0 };
+        
         let partnerId = localStorage.getItem('eco_partner_id');
-        if (!partnerId) { partnerId = Date.now(); localStorage.setItem('eco_partner_id', partnerId); }
+        if (!partnerId) {
+            partnerId = Date.now();
+            localStorage.setItem('eco_partner_id', partnerId);
+        }
         partnerId = Number(partnerId);
+
         localStorage.setItem('eco_partner_profile', JSON.stringify(profileData));
-        
-        // Sync CRM
+
+        // Sync with CRM
         const existing = Store.state.partners.find(p => p.id === partnerId);
-        if (existing) Store.updatePartner(partnerId, { name, inn, contact, email });
-        else Store.addPartner({ id: partnerId, name, inn, contact, email, username: Store.state.user?.username || "", phone: "", status: "lead", contract: "Нет договора", projects: [], finance: { total: 0, paid: 0, debt: 0 }, rating: 0, note: "Из приложения" });
-        
+        if (existing) {
+            Store.updatePartner(partnerId, { name, inn, contact, email });
+        } else {
+            Store.addPartner({
+                id: partnerId, name, inn, contact, email,
+                username: Store.state.user?.username || "",
+                phone: "", status: "lead", contract: "Нет договора",
+                projects: [], finance: { total: 0, paid: 0, debt: 0 },
+                rating: 0, note: "Из приложения"
+            });
+        }
+
         this.checkPartnerAuth();
-        if (Store.state.isAdmin) this.renderCRM();
+        this.renderCRM();
+        if(tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
     },
+
     togglePartnerEdit(isEdit) {
         if (isEdit) {
             const stored = localStorage.getItem('eco_partner_profile');
@@ -445,33 +543,54 @@ const Controller = {
             document.getElementById('partner-dashboard')?.classList.add('hidden');
         }
     },
+
+    // --- Admin Modal ---
     openStatusModal() {
         const modal = document.getElementById('status-edit-modal');
         if (!modal) return;
+        
+        // Скрываем выбор цвета (авто-расчет)
         const cp = document.querySelector('.color-picker-row');
         if(cp) cp.style.display = 'none';
+
         document.getElementById('edit-percent').value = Store.state.engineer.workload.percent;
         document.getElementById('edit-percent-val').textContent = Store.state.engineer.workload.percent;
         document.getElementById('edit-status-text').value = Store.state.engineer.workload.statusText;
+        
         modal.classList.remove('hidden');
     },
+
     saveAdminStatus() {
         const percent = parseInt(document.getElementById('edit-percent').value);
         const text = document.getElementById('edit-status-text').value;
+        
+        // Auto Color Logic (Green -> Red)
         const hue = Math.floor((100 - percent) * 1.2);
         const color = `hsl(${hue}, 85%, 45%)`;
+
         const newStatus = { percent, statusText: text || "Работаю", color };
         Store.saveWorkloadStatus(newStatus);
+        
         this.renderProfile();
         document.getElementById('status-edit-modal').classList.add('hidden');
+        if(tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
     },
+
     openProjectModal(project) {
         const modal = document.getElementById('project-detail-modal');
         const body = document.getElementById('modal-body');
         if (!modal || !body) return;
+        
         body.innerHTML = View.renderProjectModalContent(project);
         modal.classList.remove('hidden');
     }
 };
 
-document.addEventListener('DOMContentLoaded', () => { Controller.init(); });
+// Start App
+document.addEventListener('DOMContentLoaded', () => {
+    try {
+        Controller.init();
+    } catch (e) {
+        console.error("Init failed:", e);
+    }
+});
