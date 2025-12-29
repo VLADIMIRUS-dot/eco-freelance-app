@@ -1180,4 +1180,32 @@ input[type=range] {
 /* Звезды рейтинга */
 .rating-stars-mini { font-size: 0.8rem; margin-top: 4px; }
 
+/* Анимация "Дыхание" для кнопки */
+@keyframes soft-pulse {
+    0% {
+        transform: scale(1);
+        filter: brightness(1);
+        box-shadow: 0 0 0 0 rgba(0, 0, 0, 0);
+    }
+    50% {
+        transform: scale(1.03); /* Чуть увеличиваем */
+        filter: brightness(1.15); /* Делаем чуть ярче */
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15); /* Мягкая тень */
+    }
+    100% {
+        transform: scale(1);
+        filter: brightness(1);
+        box-shadow: 0 0 0 0 rgba(0, 0, 0, 0);
+    }
+}
+
+.btn-attention {
+    /* 2.5 секунды — медленно и плавно */
+    animation: soft-pulse 2.5s infinite ease-in-out; 
+    position: relative;
+    z-index: 1;
+    /* Чтобы текст не мылился при анимации */
+    backface-visibility: hidden; 
+}
+
 
