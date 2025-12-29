@@ -35,8 +35,6 @@ const Controller = {
         this.checkPartnerAuth();
 
         // === ВАЖНО: СКРЫТИЕ ЭЛЕМЕНТОВ АДМИНА ===
-        // Если пользователь НЕ админ, мы скрываем все элементы с классом .admin-only
-        // Если админ — показываем (удаляем класс hidden)
         const adminElements = document.querySelectorAll('.admin-only');
         if (!Store.state.isAdmin) {
             adminElements.forEach(el => el.classList.add('hidden'));
@@ -77,7 +75,6 @@ const Controller = {
     renderProjects() {
         const container = document.getElementById('projects-list');
         if (container) {
-            // Здесь Store сам решит, какие проекты отдать (все или только свои)
             const projects = Store.getVisibleProjects();
             container.innerHTML = View.renderProjectsList(projects);
         }
@@ -104,7 +101,7 @@ const Controller = {
     },
 
     renderCRM() {
-        if (!Store.state.isAdmin) return; // Защита
+        if (!Store.state.isAdmin) return; 
         const container = document.getElementById('partners-list');
         if (!container) return;
 
@@ -118,7 +115,9 @@ const Controller = {
         container.innerHTML = View.renderCRM(partners, this.uiState.crmFilter, totalDebt, totalPotential);
     },
 
+    // === ОБНОВЛЕННЫЕ СЛУШАТЕЛИ ===
     setupEventListeners() {
+        // --- 1. Навигация (Табы) ---
         document.querySelectorAll('.nav-item').forEach(item => {
             item.addEventListener('click', () => {
                 const targetId = item.getAttribute('data-target');
@@ -126,13 +125,50 @@ const Controller = {
             });
         });
 
+        // --- 2. Обработка кликов (Buttons, Actions) ---
         document.body.addEventListener('click', (e) => {
             const target = e.target.closest('[data-action]');
-            if (!target) return;
+            
+            // Игнорируем клик по тексту редактирования (для него dblclick)
+            if (!target || target.getAttribute('data-action') === 'edit-est-name-start') return;
+            
             const action = target.getAttribute('data-action');
             this.handleAction(action, target, e);
         });
 
+        // --- 3. Двойной клик (Редактирование названия объекта) ---
+        document.body.addEventListener('dblclick', (e) => {
+            if (e.target.getAttribute('data-action') === 'edit-est-name-start') {
+                const wrapper = e.target.closest('.obj-name-wrapper');
+                const textSpan = wrapper.querySelector('.obj-name-text');
+                const input = wrapper.querySelector('.obj-name-input-edit');
+
+                textSpan.classList.add('hidden');
+                input.classList.remove('hidden');
+                input.focus();
+                input.select(); 
+            }
+        });
+
+        // --- 4. Сохранение при потере фокуса ---
+        document.body.addEventListener('focusout', (e) => {
+            if (e.target.getAttribute('data-action') === 'save-est-name') {
+                const idx = Number(e.target.getAttribute('data-obj-idx'));
+                const newVal = e.target.value.trim() || 'Без названия';
+                
+                Store.updateEstimateObject(idx, 'name', newVal);
+                this.renderCalculator();
+            }
+        });
+
+        // --- 5. Сохранение по Enter ---
+        document.body.addEventListener('keydown', (e) => {
+            if (e.target.getAttribute('data-action') === 'save-est-name' && e.key === 'Enter') {
+                e.target.blur(); 
+            }
+        });
+
+        // --- 6. События ввода (Input) ---
         document.body.addEventListener('input', (e) => {
             if (e.target.classList.contains('calc-input')) {
                 if (e.target.type === 'range') {
@@ -145,26 +181,22 @@ const Controller = {
                 this.uiState.crmSearch = e.target.value.trim();
                 this.renderCRM();
             }
-            if (e.target.getAttribute('data-action') === 'update-est-name') {
-                const idx = Number(e.target.getAttribute('data-obj-idx'));
-                Store.updateEstimateObject(idx, 'name', e.target.value);
-            }
             if (e.target.getAttribute('data-action') === 'update-est-sources') {
                 const idx = Number(e.target.getAttribute('data-obj-idx'));
                 Store.updateEstimateObject(idx, 'sourcesCount', parseInt(e.target.value) || 0);
             }
+            // Старый обработчик update-est-name удален, так как теперь есть focusout
         });
         
-        // Обработка изменения заметок (CRM)
+        // --- 7. События изменения (Change) ---
         document.body.addEventListener('change', (e) => {
             if (e.target.getAttribute('data-action') === 'crm-note-change') {
                 const id = Number(e.target.getAttribute('data-id'));
                 Store.updatePartner(id, { note: e.target.value });
-                // Не перерисовываем весь CRM, чтобы не сбить фокус, данные уже в Store
             }
-            // ... остальные change события
             if (e.target.id === 'calc-service-type') this.updateCalcInputs();
             if (e.target.id === 'calc-file-input') this.handleFileUpload(e.target.files);
+            
             if (e.target.getAttribute('data-action') === 'update-est-service') {
                 const objIdx = Number(e.target.getAttribute('data-obj-idx'));
                 const srvIdx = Number(e.target.getAttribute('data-srv-idx'));
@@ -185,6 +217,10 @@ const Controller = {
             if (tg.openTelegramLink) tg.openTelegramLink(url); else window.open(url, '_blank');
         }
         if (action === 'nav-to-calc') document.querySelector('.nav-item[data-target="view-services"]').click();
+        
+        // НОВОЕ: Переход к проектам из личного кабинета
+        if (action === 'nav-to-projects') this.switchTab('view-projects');
+
         if (action === 'open-status-editor') this.openStatusModal();
 
         // --- ПРОЕКТЫ ---
@@ -251,16 +287,13 @@ const Controller = {
                 this.renderCRM();
             }
         }
-        // НОВОЕ: Рейтинг
         if (action === 'crm-rate') {
-            // Останавливаем всплытие, чтобы не свернулась карточка
             event.stopPropagation();
             const id = Number(target.getAttribute('data-id'));
             const val = Number(target.getAttribute('data-val'));
             Store.updatePartner(id, { rating: val });
             this.renderCRM();
         }
-        // НОВОЕ: Открыть ТГ
         if (action === 'crm-open-tg') {
             const username = target.getAttribute('data-username');
             if(username) {
@@ -380,7 +413,6 @@ const Controller = {
             simple.classList.add('hidden');
             advanced.classList.remove('hidden');
             if (Store.state.estimate.length === 0) {
-                // Авто-создание первого объекта
                 Store.addToEstimate({ id: Date.now(), name: 'Объект №1', sourcesCount: 10, services: [] });
                 this.renderCalculator();
             }
@@ -457,7 +489,6 @@ const Controller = {
         Store.addProject(newProject);
         this.renderProjects();
         
-        // Обновляем CRM если есть партнер
         const partner = Store.state.partners.find(p => p.id == partnerId);
         if (partner) {
             partner.projects.push({ type: type, stage: "Согласование", deadline: "?" });
@@ -482,13 +513,16 @@ const Controller = {
         }
     },
 
+    // === ОБНОВЛЕННЫЙ РЕНДЕР ДАШБОРДА ===
     renderPartnerDashboard(data) {
-        if(document.getElementById('lk-company-name')) document.getElementById('lk-company-name').textContent = data.name;
-        if(document.getElementById('lk-inn')) document.getElementById('lk-inn').textContent = data.inn ? `ИНН: ${data.inn}` : 'ИНН: —';
-        if(document.getElementById('lk-contact')) document.getElementById('lk-contact').textContent = data.contact || '—';
-        if(document.getElementById('lk-email')) document.getElementById('lk-email').textContent = data.email || '—';
-        const statusEl = document.getElementById('lk-status');
-        if(statusEl) statusEl.textContent = data.ordersCount > 0 ? "Постоянный клиент" : "Новый партнер";
+        const container = document.getElementById('partner-dashboard');
+        if (!container) return;
+
+        // Получаем проекты именно этого партнера для статистики и истории
+        const myProjects = Store.getVisibleProjects(); 
+        
+        // Рендерим новый красивый дашборд
+        container.innerHTML = View.renderPartnerDashboardEnhanced(data, myProjects);
     },
 
     savePartnerProfile() {
@@ -510,7 +544,6 @@ const Controller = {
 
         localStorage.setItem('eco_partner_profile', JSON.stringify(profileData));
 
-        // Sync with CRM
         const existing = Store.state.partners.find(p => p.id === partnerId);
         if (existing) {
             Store.updatePartner(partnerId, { name, inn, contact, email });
@@ -549,7 +582,6 @@ const Controller = {
         const modal = document.getElementById('status-edit-modal');
         if (!modal) return;
         
-        // Скрываем выбор цвета (авто-расчет)
         const cp = document.querySelector('.color-picker-row');
         if(cp) cp.style.display = 'none';
 
@@ -564,7 +596,6 @@ const Controller = {
         const percent = parseInt(document.getElementById('edit-percent').value);
         const text = document.getElementById('edit-status-text').value;
         
-        // Auto Color Logic (Green -> Red)
         const hue = Math.floor((100 - percent) * 1.2);
         const color = `hsl(${hue}, 85%, 45%)`;
 
@@ -586,7 +617,6 @@ const Controller = {
     }
 };
 
-// Start App
 document.addEventListener('DOMContentLoaded', () => {
     try {
         Controller.init();

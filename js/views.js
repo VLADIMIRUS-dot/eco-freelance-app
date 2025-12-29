@@ -129,9 +129,11 @@ const View = {
     },
 
     renderServicesOptions(services) { return services.map(s => `<option value="${s.id}">${s.name}</option>`).join(''); },
+    
     renderServicesList(services) {
         return services.map(s => `<div style="margin-bottom: 10px; border-bottom: 1px solid rgba(0,0,0,0.05); padding-bottom: 10px;"><strong>${s.name}</strong><p style="font-size: 0.85rem; color: #777;">${s.desc}</p><div style="font-size: 0.8rem; margin-top: 5px;">От <b>${s.basePrice.toLocaleString()} ₽</b> / ${s.unit}</div></div>`).join('');
     },
+
     renderCalculatorInputs(service) {
         if (!service) return '';
         return service.params.map(param => {
@@ -149,16 +151,34 @@ const View = {
             return `<div class="form-group"><label>${param.label}</label>${inputHTML}</div>`;
         }).join('');
     },
+
     renderEstimateList(estimateData, servicesData) {
         if (!estimateData || estimateData.length === 0) return '';
+        
         return estimateData.map((obj, objIndex) => {
             let objTotal = 0;
+            
             const servicesHTML = obj.services.map((srv, srvIndex) => {
                 objTotal += srv.price;
                 const options = servicesData.map(s => `<option value="${s.id}" ${s.id === srv.serviceId ? 'selected' : ''}>${s.name}</option>`).join('');
                 return `<div class="service-row"><div class="custom-select-wrapper"><select data-action="update-est-service" data-obj-idx="${objIndex}" data-srv-idx="${srvIndex}">${options}</select><i class="fa-solid fa-chevron-down select-arrow"></i></div><div style="display:flex; align-items:center; gap:10px;"><span style="white-space:nowrap;">${srv.price.toLocaleString()} ₽</span><i class="fa-solid fa-trash text-red" data-action="remove-est-service" data-obj-idx="${objIndex}" data-srv-idx="${srvIndex}"></i></div></div>`;
             }).join('');
-            return `<div class="estimate-object-card"><div class="obj-header"><input type="text" class="obj-name-input" value="${obj.name}" data-action="update-est-name" data-obj-idx="${objIndex}"><span class="remove-obj-btn" data-action="remove-est-obj" data-obj-idx="${objIndex}">Удалить</span></div><div class="obj-params-row"><label><i class="fa-solid fa-industry"></i> Источников:</label><input type="number" class="obj-sources-input" value="${obj.sourcesCount}" data-action="update-est-sources" data-obj-idx="${objIndex}"></div><div class="obj-services-list">${servicesHTML.length ? servicesHTML : '<p style="font-size:0.8rem; color:#999; text-align:center; padding:10px;">Добавьте услуги</p>'}</div><div style="text-align:right; margin-bottom:10px; margin-top:10px; border-top:1px solid #eee; padding-top:5px;"><small>Итого: <strong>${objTotal.toLocaleString()} ₽</strong></small></div><button class="btn btn-outline full-width" style="font-size:0.8rem; padding:8px;" data-action="add-est-service" data-obj-idx="${objIndex}"><i class="fa-solid fa-plus"></i> Добавить услугу</button></div>`;
+
+            return `
+            <div class="estimate-object-card">
+                <div class="obj-header">
+                    <div class="obj-name-wrapper">
+                        <span class="obj-name-text" data-action="edit-est-name-start" data-obj-idx="${objIndex}" title="Дважды кликните, чтобы изменить">${obj.name}</span>
+                        <input type="text" class="obj-name-input-edit hidden" value="${obj.name}" data-action="save-est-name" data-obj-idx="${objIndex}">
+                    </div>
+                    <span class="remove-obj-btn" data-action="remove-est-obj" data-obj-idx="${objIndex}">Удалить</span>
+                </div>
+                
+                <div class="obj-params-row"><label><i class="fa-solid fa-industry"></i> Источников:</label><input type="number" class="obj-sources-input" value="${obj.sourcesCount}" data-action="update-est-sources" data-obj-idx="${objIndex}"></div>
+                <div class="obj-services-list">${servicesHTML.length ? servicesHTML : '<p style="font-size:0.8rem; color:#999; text-align:center; padding:10px;">Добавьте услуги</p>'}</div>
+                <div style="text-align:right; margin-bottom:10px; margin-top:10px; border-top:1px solid #eee; padding-top:5px;"><small>Итого: <strong>${objTotal.toLocaleString()} ₽</strong></small></div>
+                <button class="btn btn-outline full-width" style="font-size:0.8rem; padding:8px;" data-action="add-est-service" data-obj-idx="${objIndex}"><i class="fa-solid fa-plus"></i> Добавить услугу</button>
+            </div>`;
         }).join('');
     },
 
@@ -176,7 +196,6 @@ const View = {
                 const percentPaid = Math.min(100, (p.finance.paid / p.finance.total) * 100) || 0;
                 const percentDebt = Math.min(100, (p.finance.debt / p.finance.total) * 100) || 0;
                 
-                // ИНТЕРАКТИВНЫЕ ЗВЕЗДЫ
                 let stars = '';
                 for(let i=1; i<=5; i++) {
                     const color = i <= p.rating ? '#f1c40f' : '#ddd';
@@ -214,5 +233,109 @@ const View = {
             }).join('');
         }
         return statsHTML + listHTML;
+    },
+
+    // --- PARTNER DASHBOARD (NEW) ---
+    renderPartnerDashboardEnhanced(profileData, projects) {
+        // 1. Статистика
+        const activeCount = projects.filter(p => p.status !== 'done').length;
+        const doneCount = projects.filter(p => p.status === 'done').length;
+
+        // 2. Определение уровня
+        let statusLevel = "Новый партнер";
+        let statusIcon = "🌱";
+        if (doneCount > 0) { statusLevel = "Партнер"; statusIcon = "🤝"; }
+        if (doneCount > 5) { statusLevel = "VIP Клиент"; statusIcon = "💎"; }
+
+        // 3. Генерация списка последних проектов (макс 3)
+        const recentProjects = projects.slice(0, 3).map(p => {
+            let sColor = '#999';
+            if(p.status === 'done') sColor = 'var(--status-green)';
+            if(p.status === 'analysis') sColor = 'var(--status-blue)';
+            
+            return `
+            <div class="lk-history-item" data-action="open-project-modal" data-id="${p.id}">
+                <div class="lk-hist-left">
+                    <div class="lk-hist-icon"><i class="fa-solid fa-folder"></i></div>
+                    <div class="lk-hist-info">
+                        <div>${p.type}</div>
+                        <div>${p.deadline}</div>
+                    </div>
+                </div>
+                <div class="lk-hist-status" style="color:${sColor}">${p.statusLabel}</div>
+            </div>`;
+        }).join('');
+
+        const emptyHistory = `<div style="text-align:center; color:#999; font-size:0.9rem; padding:10px;">Пока нет заказов</div>`;
+
+        return `
+            <!-- HEADER CARD -->
+            <div class="lk-header-card">
+                <div class="lk-top-row">
+                    <div class="lk-company-info">
+                        <h2>${profileData.name}</h2>
+                        <p>${profileData.inn ? 'ИНН: ' + profileData.inn : 'Реквизиты не заполнены'}</p>
+                    </div>
+                    <button class="lk-edit-btn" data-action="partner-edit"><i class="fa-solid fa-pen"></i></button>
+                </div>
+                <div class="lk-status-badge">${statusIcon} ${statusLevel}</div>
+            </div>
+
+            <!-- STATS GRID -->
+            <div class="lk-stats-grid">
+                <div class="lk-stat-item">
+                    <div class="lk-stat-icon" style="background: rgba(46, 204, 113, 0.15); color: #2ecc71;">
+                        <i class="fa-solid fa-briefcase"></i>
+                    </div>
+                    <div class="lk-stat-val">${activeCount}</div>
+                    <div class="lk-stat-label">Проектов в работе</div>
+                </div>
+                <div class="lk-stat-item">
+                    <div class="lk-stat-icon" style="background: rgba(241, 196, 15, 0.15); color: #f39c12;">
+                        <i class="fa-solid fa-check-double"></i>
+                    </div>
+                    <div class="lk-stat-val">${doneCount}</div>
+                    <div class="lk-stat-label">Завершено</div>
+                </div>
+            </div>
+
+            <!-- MENU -->
+            <div class="menu-list" style="margin: 0 0 25px 0;">
+                <div class="menu-item" data-action="nav-to-calc">
+                    <div class="menu-icon-box" style="background: rgba(36, 129, 204, 0.1); color: #2481cc;">
+                        <i class="fa-solid fa-plus"></i>
+                    </div>
+                    <div class="menu-text"><span>Новый заказ</span><small>Рассчитать стоимость</small></div>
+                    <i class="fa-solid fa-chevron-right arrow-icon"></i>
+                </div>
+                <div class="menu-item" data-action="contact-telegram">
+                    <div class="menu-icon-box" style="background: rgba(36, 129, 204, 0.1); color: #2481cc;">
+                        <i class="fa-solid fa-headset"></i>
+                    </div>
+                    <div class="menu-text"><span>Менеджер</span><small>Написать Владимиру</small></div>
+                    <i class="fa-solid fa-chevron-right arrow-icon"></i>
+                </div>
+            </div>
+
+            <!-- RECENT PROJECTS -->
+            <div class="lk-section-title">
+                <span>Последние проекты</span>
+                <small style="color:var(--tg-theme-link-color); cursor:pointer;" data-action="nav-to-projects">Все</small>
+            </div>
+            <div class="lk-history-list">
+                ${recentProjects || emptyHistory}
+            </div>
+
+            <!-- DETAILS & LOGOUT -->
+            <div class="lk-details-box">
+                <h3 style="margin-bottom:15px; font-size:1rem;">Реквизиты</h3>
+                <div class="detail-row"><span>Контакт:</span><span>${profileData.contact || '—'}</span></div>
+                <div class="detail-row"><span>Email:</span><span>${profileData.email || '—'}</span></div>
+            </div>
+
+            <button class="btn btn-outline full-width" data-action="partner-logout" style="border-color: var(--status-red); color: var(--status-red); opacity: 0.7;">
+                <i class="fa-solid fa-arrow-right-from-bracket"></i> Выйти из аккаунта
+            </button>
+        `;
     }
 };

@@ -5,7 +5,7 @@
  */
 
 const CONFIG = {
-    // ВАЖНО: Замените на ваш реальный ID для тестов
+    // ВАЖНО: Замените на ваш реальный ID для тестов (взять у @userinfobot)
     ADMIN_ID: 8027648882, 
     TELEGRAM_LINK: "https://t.me/EcoSubcontract",
     PLACEHOLDER_AVATAR: "https://via.placeholder.com/100",
@@ -55,15 +55,16 @@ const Store = {
             }
         ],
 
+        // ИСПРАВЛЕНИЕ: ownerId изменен на 1, чтобы совпадать с первым партнером
         projects: [
             {
-                id: 101, ownerId: 222222, clientName: "ООО 'Завод Металл'", type: "НДВ",
+                id: 101, ownerId: 1, clientName: "ООО 'Северный Металл'", type: "НДВ",
                 status: "paused", statusLabel: "Приостановлено", progress: 40, deadline: "25.12.2023",
                 resources: { method: "RDP", details: "Сервер заказчика" },
                 history: [{ date: "01.11", type: "start", text: "Старт работ" }]
             },
             {
-                id: 102, ownerId: 222222, clientName: "ООО 'Завод Металл'", type: "ПЭК",
+                id: 102, ownerId: 1, clientName: "ООО 'Северный Металл'", type: "ПЭК",
                 status: "done", statusLabel: "Готов", progress: 100, deadline: "01.11.2023",
                 resources: { method: "Личное ПО", details: "Интеграл" },
                 history: []
@@ -75,6 +76,7 @@ const Store = {
                 id: 1, name: "ООО 'Северный Металл'", inn: "7712000001", contact: "Сергей (ГИП)",
                 username: "sergey_gip", phone: "+79001112233", email: "gip@sever-met.ru",
                 status: "active", contract: "№45-23 от 10.01.23",
+                // projects здесь для визуализации в CRM, реальная связь идет через ownerId в массиве projects выше
                 projects: [{ type: "НДВ", stage: "Экспертиза", deadline: "20.12" }],
                 finance: { total: 150000, paid: 100000, debt: 50000 },
                 rating: 5, note: "Хорошие ребята."
