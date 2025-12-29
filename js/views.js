@@ -136,14 +136,41 @@ function renderProjectsView(projects) {
         return;
     }
     projects.forEach(project => {
-        const statusColorClass = project.status === 'paused' ? 'text-yellow' : 'text-green';
-        const progressColor = project.status === 'paused' ? '#f1c40f' : '#2ecc71';
+        // Определяем цвет и класс для статуса
+        let statusColorClass = 'text-green'; // По умолчанию зеленый
+        let progressColor = '#2ecc71';       // Зеленый цвет прогресса
+
+        if (project.status === 'paused') {
+            statusColorClass = 'text-yellow';
+            progressColor = '#f1c40f'; // Желтый
+        } else if (project.status === 'analysis') {
+            // Новый статус: "На согласовании"
+            statusColorClass = 'text-blue'; // Используем временный класс для логики, но цвет зададим напрямую
+            progressColor = '#3498db';      // Синий цвет
+        }
+        // Для статуса 'done' (если он будет) можно оставить зеленый или добавить отдельный стиль
+
         const card = document.createElement('div');
         card.className = 'project-card';
+        
+        // В HTML используем progressColor напрямую для бейджа статуса
+        // и для полоски прогресса.
         card.innerHTML = `
-            <div class="card-header"><span class="card-title">${project.clientName}</span><span class="card-type">${project.type}</span></div>
-            <div class="progress-wrapper"><div class="progress-line" style="width: ${project.progress}%; background-color: ${progressColor}"></div></div>
-            <div class="card-footer"><span class="${statusColorClass}"><i class="fa-solid fa-circle" style="font-size: 8px;"></i> ${project.statusLabel}</span><span>Дедлайн: ${project.deadline}</span></div>`;
+            <div class="card-header">
+                <span class="card-title">${project.clientName}</span>
+                <span class="card-type">${project.type}</span>
+            </div>
+            <div class="progress-wrapper">
+                <div class="progress-line" style="width: ${project.progress}%; background-color: ${progressColor}"></div>
+            </div>
+            <div class="card-footer">
+                <span style="color: ${progressColor}; font-weight: 600;"> 
+                    <i class="fa-solid fa-circle" style="font-size: 8px;"></i> 
+                    ${project.statusLabel}
+                </span>
+                <span>Дедлайн: ${project.deadline}</span>
+            </div>`;
+            
         card.addEventListener('click', () => fillAndShowModal(project));
         container.appendChild(card);
     });
@@ -320,4 +347,5 @@ function toggleAdminElementsView(show) {
         else el.classList.add('hidden');
     });
 }
+
 
