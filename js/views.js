@@ -74,7 +74,7 @@ function renderProfileView(profileData) {
                 <i class="fa-brands fa-telegram"></i> Написать мне
             </button>
             
-            <button class="btn btn-primary" onclick="goToCalculator()">
+            <button class="btn btn-primary btn-attention" onclick="goToCalculator()">
                 <i class="fa-solid fa-calculator"></i> Заказать разработку
             </button>
 
@@ -347,5 +347,6 @@ function toggleAdminElementsView(show) {
         else el.classList.add('hidden');
     });
 }
+
 
 
