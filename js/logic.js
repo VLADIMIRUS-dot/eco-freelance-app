@@ -593,4 +593,58 @@ window.copyINN = function(inn) {
         alert("ИНН скопирован: " + inn); // В WebApp лучше использовать кастомный тост, но alert сойдет
     });
 };
+// js/logic.js
+
+/**
+ * Создает проект в списке на основе заявки
+ * @param {string} type - Тип услуги (например "НДВ" или "Смета")
+ * @param {number} price - Ориентировочная стоимость (числом или 0)
+ */
+function createProjectFromRequest(type, price) {
+    // Пытаемся узнать имя клиента из профиля
+    const storedProfile = localStorage.getItem('eco_partner_profile');
+    const clientName = storedProfile ? JSON.parse(storedProfile).name : "Новый клиент (из приложения)";
+    const partnerId = localStorage.getItem('eco_partner_id') || 0;
+
+    const newProject = {
+        id: Date.now(), // Уникальный ID
+        ownerId: Number(partnerId), // Привязка к текущему пользователю
+        clientName: clientName,
+        type: type,
+        status: "analysis", // Технический статус
+        statusLabel: "На согласовании", // Текст для бейджа
+        progress: 5, // Начальный прогресс
+        deadline: "Оценка сроков...",
+        resources: { method: "—", details: "Ожидает подтверждения" },
+        history: [
+            { date: new Date().toLocaleDateString(), type: "start", text: "Заявка отправлена на расчет" }
+        ],
+        files: []
+    };
+
+    // Добавляем проект в начало списка
+    projectsData.unshift(newProject);
+
+    // Обновляем отображение списка проектов
+    if (typeof renderProjectsView === 'function') {
+        // Показываем все проекты админу или только свои пользователю
+        const visibleProjects = isAdmin ? projectsData : projectsData.filter(p => p.ownerId == currentUserId || p.ownerId == partnerId);
+        renderProjectsView(visibleProjects);
+    }
+    
+    // Также обновляем список проектов внутри CRM (в массиве partnersData), если партнер существует
+    const partnerIndex = partnersData.findIndex(p => p.id == partnerId);
+    if (partnerIndex > -1) {
+        partnersData[partnerIndex].projects.push({
+            type: type,
+            stage: "Согласование",
+            deadline: "?"
+        });
+        // Если это первый заказ, можно поменять статус партнера
+        if (partnersData[partnerIndex].status === 'lead') {
+             partnersData[partnerIndex].status = 'active';
+        }
+        if (typeof renderModernCRM === 'function') renderModernCRM();
+    }
+}
 
