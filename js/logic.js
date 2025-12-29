@@ -246,16 +246,80 @@ function renderPartnerDashboard(data) {
 }
 window.savePartnerProfile = function() {
     const nameInput = document.getElementById('p-name');
-    if (!nameInput || !nameInput.value.trim()) { alert("Введите название"); return; }
-    localStorage.setItem('eco_partner_profile', JSON.stringify({
+    const innInput = document.getElementById('p-inn');
+    const contactInput = document.getElementById('p-contact');
+    const emailInput = document.getElementById('p-email');
+
+    if (!nameInput || !nameInput.value.trim()) { 
+        alert("Введите название организации"); 
+        return; 
+    }
+
+    // 1. Собираем объект данных
+    const profileData = {
         name: nameInput.value,
-        inn: document.getElementById('p-inn')?.value,
-        contact: document.getElementById('p-contact')?.value,
-        email: document.getElementById('p-email')?.value,
-        ordersCount: 0
-    }));
-    checkFirstVisit();
+        inn: innInput?.value || "",
+        contact: contactInput?.value || "",
+        email: emailInput?.value || "",
+        ordersCount: 0 // Для счетчика лояльности
+    };
+
+    // 2. Генерируем или получаем стабильный ID для этого пользователя
+    let partnerId = localStorage.getItem('eco_partner_id');
+    if (!partnerId) {
+        partnerId = Date.now(); // Генерируем уникальный ID
+        localStorage.setItem('eco_partner_id', partnerId);
+    }
+    partnerId = Number(partnerId);
+
+    // 3. Сохраняем в LocalStorage (для отображения в ЛК)
+    localStorage.setItem('eco_partner_profile', JSON.stringify(profileData));
+
+    // 4. === ЛОГИКА CRM ===
+    // Ищем, есть ли уже этот партнер в списке CRM
+    const existingIndex = partnersData.findIndex(p => p.id === partnerId);
+
+    if (existingIndex > -1) {
+        // ОБНОВЛЕНИЕ: Если партнер уже есть, обновляем его данные, сохраняя админские пометки
+        partnersData[existingIndex] = {
+            ...partnersData[existingIndex], // Оставляем старые поля (рейтинг, заметки, долги)
+            name: profileData.name,
+            inn: profileData.inn,
+            contact: profileData.contact,
+            email: profileData.email
+        };
+    } else {
+        // СОЗДАНИЕ: Если партнера нет, добавляем как "Лид"
+        const newPartnerCRM = {
+            id: partnerId,
+            name: profileData.name,
+            inn: profileData.inn,
+            contact: profileData.contact,
+            username: window.Telegram?.WebApp?.initDataUnsafe?.user?.username || "", // Пытаемся взять юзернейм из TG
+            phone: "", // Телефон пока пустой
+            email: profileData.email,
+            
+            status: "lead", // Статус "Новый/Лид"
+            contract: "Нет договора",
+            
+            projects: [], // Пока нет проектов
+            finance: { total: 0, paid: 0, debt: 0 },
+            rating: 0, // Рейтинг 0 (новый)
+            note: "Зарегистрировался через приложение"
+        };
+        partnersData.unshift(newPartnerCRM); // Добавляем в начало списка
+    }
+
+    // 5. Обновляем UI
+    checkFirstVisit(); // Обновляет вид ЛК
+    if (typeof renderModernCRM === 'function') {
+        renderModernCRM(); // Обновляет список в админке
+    }
+
     if(tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+    
+    // Переключаем вкладку обратно на просмотр профиля
+    togglePartnerEditMode(false);
 };
 window.togglePartnerEditMode = function(isEdit) {
     if (isEdit) {
@@ -529,3 +593,4 @@ window.copyINN = function(inn) {
         alert("ИНН скопирован: " + inn); // В WebApp лучше использовать кастомный тост, но alert сойдет
     });
 };
+
