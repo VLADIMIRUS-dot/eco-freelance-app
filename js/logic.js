@@ -401,6 +401,8 @@ function renderEstimateLogic() {
 }
 window.sendEstimateToTelegram = function() {
     if (estimateData.length === 0) return;
+    
+    // ... (старый код формирования msg) ...
     let msg = "📑 *КП (Смета):*\n\n";
     let total = 0;
     estimateData.forEach(obj => {
@@ -413,9 +415,15 @@ window.sendEstimateToTelegram = function() {
         msg += "\n";
     });
     msg += `💰 *ИТОГО: ${total.toLocaleString()} ₽*`;
+
     const botLink = CONFIG.TELEGRAM_LINK.replace('https://t.me/', '');
-    if(tg.openTelegramLink) tg.openTelegramLink(`https://t.me/${botLink}?text=${encodeURIComponent(msg)}`);
-    else window.open(`https://t.me/${botLink}?text=${encodeURIComponent(msg)}`, '_blank');
+    const url = `https://t.me/${botLink}?text=${encodeURIComponent(msg)}`;
+
+    if(tg.openTelegramLink) tg.openTelegramLink(url);
+    else window.open(url, '_blank');
+
+    // === НОВОЕ: Создаем проект ===
+    createProjectFromRequest("Комплексная смета (КП)", total);
 };
 window.goToCalculator = function() {
     const calcTab = document.querySelector('.nav-item[data-target="view-services"]');
@@ -659,5 +667,6 @@ function createProjectFromRequest(type, price) {
         if (typeof renderModernCRM === 'function') renderModernCRM();
     }
 }
+
 
 
