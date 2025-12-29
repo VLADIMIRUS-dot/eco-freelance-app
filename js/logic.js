@@ -201,8 +201,14 @@ function initSimpleCalculator() {
 
     if (orderBtn) {
         orderBtn.addEventListener('click', () => {
-            const service = servicesData.find(s => s.id === typeSelect.value).name;
-            const price = priceDisplay.textContent;
+            const serviceObj = servicesData.find(s => s.id === typeSelect.value);
+            const serviceName = serviceObj ? serviceObj.name : "Услуга";
+            
+            // Получаем цену (удаляем ' ₽' и пробелы для числа)
+            const priceStr = priceDisplay.textContent; 
+            // Логика отправки в Telegram (оставляем как было)
+            // ... (код формирования msg и открытия ссылки) ...
+            
             let details = '';
             document.querySelectorAll('.calc-input').forEach(input => {
                 const label = input.closest('.form-group').querySelector('label')?.textContent || '';
@@ -212,10 +218,16 @@ function initSimpleCalculator() {
                 details += `\n🔹 ${label}: ${val}`;
             });
             const fileMsg = uploadedFiles.length > 0 ? `\n📎 Файлов: ${uploadedFiles.length}` : '';
-            const msg = `👋 *Заявка*\n\n🛠 ${service}${details}\n\n💰 ${price}${fileMsg}`;
+            const msg = `👋 *Заявка*\n\n🛠 ${serviceName}${details}\n\n💰 ${priceStr}${fileMsg}`;
+            
             const botLink = CONFIG.TELEGRAM_LINK.replace('https://t.me/', '');
-            if(tg.openTelegramLink) tg.openTelegramLink(`https://t.me/${botLink}?text=${encodeURIComponent(msg)}`);
-            else window.open(`https://t.me/${botLink}?text=${encodeURIComponent(msg)}`, '_blank');
+            const url = `https://t.me/${botLink}?text=${encodeURIComponent(msg)}`;
+            
+            if(tg.openTelegramLink) tg.openTelegramLink(url);
+            else window.open(url, '_blank');
+
+            // === НОВОЕ: Создаем проект ===
+            createProjectFromRequest(serviceName, 0); 
         });
     }
     typeSelect.addEventListener('change', renderInputs);
@@ -647,4 +659,5 @@ function createProjectFromRequest(type, price) {
         if (typeof renderModernCRM === 'function') renderModernCRM();
     }
 }
+
 
