@@ -236,31 +236,44 @@ const View = {
     },
 
     // --- PARTNER DASHBOARD (NEW) ---
-    renderPartnerDashboardEnhanced(profileData, projects) {
+        renderPartnerDashboardEnhanced(profileData, projects) {
         // 1. Статистика
         const activeCount = projects.filter(p => p.status !== 'done').length;
         const doneCount = projects.filter(p => p.status === 'done').length;
 
-        // 2. Определение уровня
-        let statusLevel = "Новый партнер";
+        // 2. Определение уровня и прогресса
+        let statusLevel = "Гость";
         let statusIcon = "🌱";
-        if (doneCount > 0) { statusLevel = "Партнер"; statusIcon = "🤝"; }
-        if (doneCount > 5) { statusLevel = "VIP Клиент"; statusIcon = "💎"; }
+        let nextLevel = "Партнер (1 заказ)";
+        let progressPercent = 5;
 
-        // 3. Генерация списка последних проектов (макс 3)
+        if (doneCount === 0) {
+            statusLevel = "Новичок";
+            statusIcon = "👋";
+            nextLevel = "Партнер";
+            progressPercent = 10;
+        } else if (doneCount >= 1 && doneCount < 5) {
+            statusLevel = "Партнер";
+            statusIcon = "🤝";
+            nextLevel = "VIP Клиент";
+            progressPercent = (doneCount / 5) * 100;
+        } else {
+            statusLevel = "VIP Клиент";
+            statusIcon = "💎";
+            nextLevel = "Максимальный уровень";
+            progressPercent = 100;
+        }
+
+        // 3. Последние проекты
         const recentProjects = projects.slice(0, 3).map(p => {
             let sColor = '#999';
             if(p.status === 'done') sColor = 'var(--status-green)';
             if(p.status === 'analysis') sColor = 'var(--status-blue)';
-            
             return `
             <div class="lk-history-item" data-action="open-project-modal" data-id="${p.id}">
                 <div class="lk-hist-left">
                     <div class="lk-hist-icon"><i class="fa-solid fa-folder"></i></div>
-                    <div class="lk-hist-info">
-                        <div>${p.type}</div>
-                        <div>${p.deadline}</div>
-                    </div>
+                    <div class="lk-hist-info"><div>${p.type}</div><div>${p.deadline}</div></div>
                 </div>
                 <div class="lk-hist-status" style="color:${sColor}">${p.statusLabel}</div>
             </div>`;
@@ -274,44 +287,47 @@ const View = {
                 <div class="lk-top-row">
                     <div class="lk-company-info">
                         <h2>${profileData.name}</h2>
-                        <p>${profileData.inn ? 'ИНН: ' + profileData.inn : 'Реквизиты не заполнены'}</p>
+                        <p>${profileData.contact || 'Контакт не указан'}</p>
                     </div>
                     <button class="lk-edit-btn" data-action="partner-edit"><i class="fa-solid fa-pen"></i></button>
                 </div>
-                <div class="lk-status-badge">${statusIcon} ${statusLevel}</div>
+                
+                <!-- Status & Progress -->
+                <div style="margin-top: 15px;">
+                    <div style="display:flex; justify-content:space-between; font-size:0.8rem; margin-bottom:5px; opacity:0.9;">
+                        <span>${statusIcon} ${statusLevel}</span>
+                        <span>${doneCount} завершено</span>
+                    </div>
+                    <div style="height:6px; background:rgba(0,0,0,0.2); border-radius:3px; overflow:hidden;">
+                        <div style="width:${progressPercent}%; background:white; height:100%;"></div>
+                    </div>
+                    <div style="font-size:0.7rem; margin-top:4px; opacity:0.7; text-align:right;">След. уровень: ${nextLevel}</div>
+                </div>
             </div>
 
             <!-- STATS GRID -->
             <div class="lk-stats-grid">
                 <div class="lk-stat-item">
-                    <div class="lk-stat-icon" style="background: rgba(46, 204, 113, 0.15); color: #2ecc71;">
-                        <i class="fa-solid fa-briefcase"></i>
-                    </div>
+                    <div class="lk-stat-icon" style="background: rgba(46, 204, 113, 0.15); color: #2ecc71;"><i class="fa-solid fa-briefcase"></i></div>
                     <div class="lk-stat-val">${activeCount}</div>
-                    <div class="lk-stat-label">Проектов в работе</div>
+                    <div class="lk-stat-label">В работе</div>
                 </div>
                 <div class="lk-stat-item">
-                    <div class="lk-stat-icon" style="background: rgba(241, 196, 15, 0.15); color: #f39c12;">
-                        <i class="fa-solid fa-check-double"></i>
-                    </div>
+                    <div class="lk-stat-icon" style="background: rgba(241, 196, 15, 0.15); color: #f39c12;"><i class="fa-solid fa-check-double"></i></div>
                     <div class="lk-stat-val">${doneCount}</div>
-                    <div class="lk-stat-label">Завершено</div>
+                    <div class="lk-stat-label">Готово</div>
                 </div>
             </div>
 
             <!-- MENU -->
             <div class="menu-list" style="margin: 0 0 25px 0;">
                 <div class="menu-item" data-action="nav-to-calc">
-                    <div class="menu-icon-box" style="background: rgba(36, 129, 204, 0.1); color: #2481cc;">
-                        <i class="fa-solid fa-plus"></i>
-                    </div>
+                    <div class="menu-icon-box" style="background: rgba(36, 129, 204, 0.1); color: #2481cc;"><i class="fa-solid fa-plus"></i></div>
                     <div class="menu-text"><span>Новый заказ</span><small>Рассчитать стоимость</small></div>
                     <i class="fa-solid fa-chevron-right arrow-icon"></i>
                 </div>
                 <div class="menu-item" data-action="contact-telegram">
-                    <div class="menu-icon-box" style="background: rgba(36, 129, 204, 0.1); color: #2481cc;">
-                        <i class="fa-solid fa-headset"></i>
-                    </div>
+                    <div class="menu-icon-box" style="background: rgba(36, 129, 204, 0.1); color: #2481cc;"><i class="fa-solid fa-headset"></i></div>
                     <div class="menu-text"><span>Менеджер</span><small>Написать Владимиру</small></div>
                     <i class="fa-solid fa-chevron-right arrow-icon"></i>
                 </div>
@@ -322,18 +338,15 @@ const View = {
                 <span>Последние проекты</span>
                 <small style="color:var(--tg-theme-link-color); cursor:pointer;" data-action="nav-to-projects">Все</small>
             </div>
-            <div class="lk-history-list">
-                ${recentProjects || emptyHistory}
-            </div>
+            <div class="lk-history-list">${recentProjects || emptyHistory}</div>
 
-            <!-- DETAILS & LOGOUT -->
             <div class="lk-details-box">
                 <h3 style="margin-bottom:15px; font-size:1rem;">Реквизиты</h3>
-                <div class="detail-row"><span>Контакт:</span><span>${profileData.contact || '—'}</span></div>
+                <div class="detail-row"><span>ИНН:</span><span>${profileData.inn || '—'}</span></div>
                 <div class="detail-row"><span>Email:</span><span>${profileData.email || '—'}</span></div>
             </div>
 
-            <button class="btn btn-outline full-width" data-action="partner-logout" style="border-color: var(--status-red); color: var(--status-red); opacity: 0.7;">
+            <button class="btn btn-outline full-width" data-action="partner-logout" style="border-color: var(--status-red); color: var(--status-red); opacity: 0.7; margin-bottom:20px;">
                 <i class="fa-solid fa-arrow-right-from-bracket"></i> Выйти из аккаунта
             </button>
         `;

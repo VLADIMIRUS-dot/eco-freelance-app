@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>EcoFreelance App</title>
-    <link rel="preconnect" href="https://telegram.org">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="css/style.css">
@@ -14,8 +13,39 @@
     <div id="app-wrapper">
         <main id="main-content">
 
+            <!-- ЭКРАН 0: ПРИВЕТСТВИЕ (НОВОЕ) -->
+            <section id="view-welcome" class="view">
+                <div class="welcome-container" style="padding: 40px 20px; text-align: center;">
+                    <div style="font-size: 4rem; color: var(--tg-theme-button-color); margin-bottom: 20px;">
+                        <i class="fa-solid fa-leaf"></i>
+                    </div>
+                    <h1>Добро пожаловать!</h1>
+                    <p style="color: var(--tg-theme-hint-color); margin-bottom: 30px;">
+                        Я — Владимир, инженер-эколог.<br>Заказывайте проекты НДВ, СЗЗ и ПЭК без посредников.
+                    </p>
+                    
+                    <form id="welcome-form" onsubmit="event.preventDefault();" style="text-align: left;">
+                        <div class="form-group">
+                            <label>Ваше имя</label>
+                            <input type="text" id="w-contact" placeholder="Иван Иванович" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Название компании</label>
+                            <input type="text" id="w-name" placeholder="ООО 'Ромашка'" required>
+                        </div>
+						<div class="form-group">
+							<label>ИНН (Обязательно)</label>
+							<input type="tel" id="w-inn" placeholder="Введите ИНН" required>
+						</div>
+                        <button type="submit" class="btn btn-primary full-width btn-attention" data-action="complete-registration">
+                            Начать работу
+                        </button>
+                    </form>
+                </div>
+            </section>
+
             <!-- ЭКРАН 1: ПРОФИЛЬ -->
-            <section id="view-profile" class="view active"></section>
+            <section id="view-profile" class="view"></section>
 
             <!-- ЭКРАН 2: ПРОЕКТЫ -->
             <section id="view-projects" class="view">
@@ -51,7 +81,6 @@
                                 <input type="file" id="calc-file-input" multiple hidden>
                                 <i class="fa-solid fa-cloud-arrow-up"></i>
                                 <span>Прикрепить файлы</span>
-                                <small>PDF, DOCX, ZIP до 20 Мб</small>
                             </div>
                             <div id="file-list-display" class="file-list"></div>
                         </div>
@@ -88,47 +117,25 @@
 
             <!-- ЭКРАН 5: ПРОФИЛЬ КЛИЕНТА -->
             <section id="view-partner" class="view">
-                <div id="partner-auth" class="modal-content partner-form-content hidden" style="box-shadow: none; padding-top: 40px;">
+                <!-- Режим редактирования (Скрыт по умолчанию) -->
+                <div id="partner-edit-mode" class="modal-content partner-form-content hidden" style="box-shadow: none; padding-top: 20px;">
                     <div class="partner-header">
-                        <i class="fa-solid fa-handshake"></i>
-                        <h2>Давайте познакомимся!</h2>
-                        <p>Заполните реквизиты для автоматического формирования Договоров.</p>
+                        <h2>Редактирование</h2>
                     </div>
-                    <form id="partner-form" onsubmit="event.preventDefault();">
-                        <div class="form-group"><label>Название организации / ИП</label><input type="text" id="p-name" placeholder="ООО 'Ромашка'" required></div>
+                    <form id="partner-edit-form" onsubmit="event.preventDefault();">
+                        <div class="form-group"><label>Контактное лицо</label><input type="text" id="p-contact" required></div>
+                        <div class="form-group"><label>Организация / ИП</label><input type="text" id="p-name" required></div>
                         <div class="form-group"><label>ИНН</label><input type="tel" id="p-inn" placeholder="Введите ИНН"></div>
-                        <div class="form-group"><label>Контактное лицо</label><input type="text" id="p-contact" placeholder="Иван Иванович"></div>
-                        <div class="form-group"><label>Email</label><input type="email" id="p-email" placeholder="buh@example.com"></div>
-                        <button type="submit" class="btn btn-primary full-width" data-action="partner-save">Сохранить и Войти</button>
+                        <div class="form-group"><label>Email</label><input type="email" id="p-email" placeholder="email@example.com"></div>
+                        <div style="display:flex; gap:10px; margin-top: 20px;">
+                            <button class="btn btn-outline full-width" data-action="cancel-partner-edit">Отмена</button>
+                            <button type="submit" class="btn btn-primary full-width" data-action="partner-update">Сохранить</button>
+                        </div>
                     </form>
                 </div>
 
-                <div id="partner-dashboard" class="hidden">
-                    <div class="lk-header">
-                        <div class="lk-avatar"><i class="fa-solid fa-building"></i></div>
-                        <div class="lk-info"><h2 id="lk-company-name">...</h2><p id="lk-inn">ИНН: —</p></div>
-                        <button class="btn-icon-only" data-action="partner-edit"><i class="fa-solid fa-pen"></i></button>
-                    </div>
-                    <div class="loyalty-card">
-                        <div class="loyalty-row"><span>Ваш статус:</span><strong id="lk-status">Новый партнер</strong></div>
-                        <div class="loyalty-desc">Сделайте первый заказ для статуса "Постоянный клиент".</div>
-                    </div>
-                    <div class="menu-list" style="margin-top: 0;">
-                        <div class="menu-item" data-action="contact-telegram">
-                            <div class="menu-icon-box" style="background: rgba(36, 129, 204, 0.1); color: #2481cc;"><i class="fa-solid fa-headset"></i></div>
-                            <div class="menu-text"><span>Персональный менеджер</span><small>Написать Владимиру</small></div>
-                            <i class="fa-solid fa-chevron-right arrow-icon"></i>
-                        </div>
-                    </div>
-                    <div class="lk-details">
-                        <h3>Реквизиты</h3>
-                        <div class="detail-row"><span>Контакт:</span><span id="lk-contact">—</span></div>
-                        <div class="detail-row"><span>Email:</span><span id="lk-email">—</span></div>
-                    </div>
-                    <button class="btn btn-outline full-width" data-action="partner-logout" style="border-color: var(--status-red); color: var(--status-red); margin-top: 20px;">
-                        <i class="fa-solid fa-arrow-right-from-bracket"></i> Выйти
-                    </button>
-                </div>
+                <!-- Дашборд -->
+                <div id="partner-dashboard"></div>
             </section>
 
         </main>
@@ -153,17 +160,17 @@
                     <label>Текст статуса</label>
                     <input type="text" id="edit-status-text">
                 </div>
-                <div class="color-picker-row"></div> <!-- Скрыт CSS-ом -->
+                <div class="color-picker-row"></div>
                 <button class="btn btn-primary full-width" data-action="save-status">Сохранить</button>
             </div>
         </div>
 
-        <!-- NAVIGATION -->
-        <nav class="bottom-nav">
+        <!-- NAVIGATION (ID добавлен для скрытия) -->
+        <nav id="bottom-nav" class="bottom-nav">
             <div class="nav-item active" data-target="view-profile"><i class="fa-solid fa-user"></i><span>Эколог</span></div>
             <div class="nav-item" data-target="view-projects"><i class="fa-solid fa-briefcase"></i><span>Проекты</span></div>
             <div class="nav-item" data-target="view-services"><i class="fa-solid fa-calculator"></i><span>Расчет</span></div>
-            <div class="nav-item" data-target="view-partner"><i class="fa-solid fa-building"></i><span>Профиль</span></div>
+            <div class="nav-item" data-target="view-partner"><i class="fa-solid fa-building"></i><span>Кабинет</span></div>
             <div class="nav-item admin-only hidden" data-target="view-partners"><i class="fa-solid fa-gem"></i><span>CRM</span></div>
         </nav>
     </div>
