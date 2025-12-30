@@ -442,6 +442,10 @@ input[type=range] { width: 100%; accent-color: var(--tg-theme-button-color); mar
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
+    
+    /* ЭТО ВАЖНО: поднимаем текст и кнопку над фоновым кругом */
+    position: relative; 
+    z-index: 5; 
 }
 
 .lk-company-info h2 {
@@ -468,6 +472,10 @@ input[type=range] { width: 100%; accent-color: var(--tg-theme-button-color); mar
     justify-content: center;
     cursor: pointer;
     backdrop-filter: blur(5px);
+    
+    /* Дополнительная страховка */
+    position: relative; 
+    z-index: 6; 
 }
 
 /* 2. Бейдж статуса */
